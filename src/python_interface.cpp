@@ -39,10 +39,9 @@ PYBIND11_MODULE(MODULE_NAME, m)
         .def(pybind11::self - pybind11::self)
         .def(pybind11::self * pybind11::self)
         .def(pybind11::self / pybind11::self)
-        .def("__repr__",
-            [](const SwiftTensor& d)
-            {
-                return "";
-            }
-        );
+        .def("__getitem__", static_cast<float (SwiftTensor::*)(int)const>(&SwiftTensor::operator[]))
+        .def("__getitem__", static_cast<float (SwiftTensor::*)(const::std::vector<int>&)const>(&SwiftTensor::operator[]))
+        .def("__setitem__", static_cast<void (SwiftTensor::*)(int, float val)const>(&SwiftTensor::set))
+        .def("__setitem__", static_cast<void (SwiftTensor::*)(const::std::vector<int>&, float val)const>(&SwiftTensor::set))
+        .def("__repr__", &tensorswift_stringify);
 }
