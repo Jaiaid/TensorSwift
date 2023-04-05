@@ -33,7 +33,7 @@ python3 -c "import tensorswift"
 
 Currently two class exists in the module, 
  1. Data (a simple int wrapping class with basic four operation support)
- 2. SwiftTensor, ongoing work
+ 2. SwiftTensor, ongoing work, buffer contains garbage, size is in uint64_t and means number of element, arbitrary dimension should work, only floating number hold
 
 Example import
 ```
@@ -52,3 +52,5 @@ a = tensorswift.SwiftTensor()
 # tensor with shape [1,2]
 b = tensorswift.SwiftTensor([1,2])
 ```
+
+example code can be found in example.py
