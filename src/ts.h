@@ -15,7 +15,7 @@ public:
     
     SwiftTensor(){ this->storage_ptr = std::make_shared<Storage>(); }
     
-    SwiftTensor(std::vector<int>& shape)
+    SwiftTensor(const std::vector<int>& shape)
     {
         // calculate the size
         uint64_t intended_size = (shape.size()>0)?shape[0]:0;
@@ -29,7 +29,7 @@ public:
         this->shape = shape;
     }
 
-    SwiftTensor(std::shared_ptr<Storage> storage_ptr, std::vector<int>& new_shape)
+    SwiftTensor(std::shared_ptr<Storage> storage_ptr, const std::vector<int>& new_shape)
     {
         // calculate the size corresponding to new shape
         uint64_t intended_size = (new_shape.size()>0)?new_shape[0]:0;
@@ -51,7 +51,7 @@ public:
     }
     
     // return a new instance with changed view but with same storage
-    SwiftTensor view(std::vector<int>& shape)
+    SwiftTensor view(const std::vector<int>& shape)
     {
         SwiftTensor new_view = SwiftTensor(this->storage_ptr, shape);
         return new_view;
@@ -63,7 +63,28 @@ public:
         return this->storage_ptr->size;
     }
 
-    SwiftTensor operator+(const SwiftTensor& t)const { return SwiftTensor(); }
+    // get the storage buffer to read
+    const Storage& get_storage()
+    {
+        return *(this->storage_ptr);
+    }
+
+    // element wise addition
+    // considers the underlying buffer as flattened array and add corresponding element
+    // works only for tesnor with same size (shape may be different)
+    SwiftTensor operator+(const SwiftTensor& t)const 
+    {
+        // we can add stuffs considering the buffer as 1d for + operation
+        // what ever the shape, as long as size matches this should work
+        // for axis specific addition, it will be done in separate function to pass axis parameter
+
+        // TODO
+        // size check and throw exception
+        // generate a tensor with independent storage but same shape
+        SwiftTensor result = SwiftTensor(this->shape);
+
+        return SwiftTensor(); 
+    }
     SwiftTensor operator-(const SwiftTensor& t)const { return SwiftTensor(); }
     SwiftTensor operator*(const SwiftTensor& t)const { return SwiftTensor(); }
     SwiftTensor operator/(const SwiftTensor& t)const { return SwiftTensor(); }
