@@ -31,7 +31,7 @@ PYBIND11_MODULE(MODULE_NAME, m)
 
     pybind11::class_<SwiftTensor>(m, MODULE_TENSORCLASS_PYTHONNAME)
         .def(pybind11::init<>())
-        .def(pybind11::init<std::vector<int>&>())
+        .def(pybind11::init<const std::vector<int>&>())
         .def("view", &SwiftTensor::view, "get changed view of SwiftTensor with same storage")
         .def("size", &SwiftTensor::size, "get total number of element in SwiftTensor")
         .def_readonly("shape", &SwiftTensor::shape, "get shape of SwiftTensor")
