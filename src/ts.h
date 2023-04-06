@@ -97,6 +97,15 @@ public:
         return this->dim_offset;
     }
 
+    // to get device
+    // currently there is no way to provide device type when constructing tensor
+    // TODO
+    // create constructor to provide device type at instantiation
+    STORAGE_DEVICE get_device()
+    {
+        return this->storage_ptr->devtype;
+    }
+
     // element wise addition
     // considers the underlying buffer as flattened array and add corresponding element
     // works only for tesnor with same size (shape may be different)
@@ -190,26 +199,34 @@ public:
     }
 };
 
-// does not work well
-// probably writing recursive function will be easier
+// this should not be this complex
+// but for now it works
+void recursive_tensor_str_format_generation(std::string& tensor_str, std::vector<int>& stride_list, const float* buffer, int len, int& cur_idx, int cur_dimension)
+{
+    do{
+        if (cur_dimension < (int)stride_list.size() - 1 && cur_idx%stride_list[cur_dimension]==0) {
+            tensor_str += "[";
+            recursive_tensor_str_format_generation(tensor_str, stride_list, buffer, len, cur_idx, cur_dimension+1);
+            tensor_str += "]";
+        }
+        // last dimension is all number so no [...] only number
+        else if (cur_dimension == (int)stride_list.size()-1) {
+            tensor_str += std::to_string(buffer[cur_idx]) + ",";
+            cur_idx++;
+        }
+    }while(cur_idx < len && (cur_dimension==0 || cur_idx%stride_list[cur_dimension-1]!=0 ));
+}
+
 std::string tensorswift_stringify(const SwiftTensor& d)
 {
     std::string str_format;
     const float* buffer = d.get_storage().buffer;
-    const std::vector<int> stride_list = d.get_stride_list();
-    std::vector<char> operator_flip_list(stride_list.size(), '['); 
-    int dimension_printing = 0;
+    std::vector<int> stride_list = d.get_stride_list();
+    int idx_track = 0;
 
-    for(int i=0;i<d.size();i++)
-    {
-        while (dimension_printing < stride_list.size() && i%stride_list[dimension_printing] == 0)
-        {
-            str_format += operator_flip_list[dimension_printing];
-            dimension_printing++;
-        }
-        dimension_printing--;
-        str_format += std::to_string(buffer[i]);
-    }
+    str_format += "[";
+    recursive_tensor_str_format_generation(str_format, stride_list, buffer, d.size(), idx_track, 0);
+    str_format += "]";
     return str_format;
 }
 
