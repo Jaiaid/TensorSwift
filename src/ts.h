@@ -133,8 +133,72 @@ public:
     }
 
     SwiftTensor operator-(const SwiftTensor& t)const { return SwiftTensor(); }
-    SwiftTensor operator*(const SwiftTensor& t)const { return SwiftTensor(); }
-    SwiftTensor operator/(const SwiftTensor& t)const { return SwiftTensor(); }
+    
+    SwiftTensor operator*(const SwiftTensor& t)const 
+    {
+
+        SwiftTensor result = SwiftTensor(this->shape);
+
+        float* buffer1 = this->storage_ptr->buffer;
+        float* buffer2 = t.get_storage().buffer;
+
+        if(this->storage_ptr->size > 1 && t.get_storage().size > 1) {
+            result = this.matmul(t);
+        } else {
+            for (int i=0;i<this->size();i++) 
+            {
+                result.get_storage().buffer[i] = buffer1[i] * buffer2[i];
+            }
+        }
+        
+        return result;
+    }
+
+    SwiftTensor operator/(const SwiftTensor& t)const
+    { 
+        SwiftTensor result = SwiftTensor(this->shape);
+
+        float* buffer1 = this->storage_ptr->buffer;
+        float* buffer2 = t.get_storage().buffer;
+        for (int i=0;i<this->size();i++) 
+        {
+            result.get_storage().buffer[i] = buffer1[i] / buffer2[i];
+        }
+
+        return result;
+    }
+
+    SwiftTensor matmul (const SwiftTensor& t)
+    {
+        SwiftTensor result = SwiftTensor(this->shape);
+
+        float* buffer1 = this->storage_ptr->buffer;
+        float* buffer2 = t.get_storage().buffer;
+
+        uint64_t thisize = this->storage_ptr->size;
+        uint64_t tsize = t.get_storage().size;
+        
+        // Initialize elements in result to 0.
+        for(i = 0; i < r1; ++i)
+        {
+            for(j = 0; j < c2; ++j)
+            {
+                mult[i][j]=0;
+            }
+        }
+
+        // Multiplying both matrices and update the result.
+        for(i = 0; i < r1; ++i)
+        {
+            for(j = 0; j < c2; ++j)
+            {
+                for(k = 0; k < c1; ++k)
+                {
+                    mult[i][j] += a[i][k] * b[k][j];
+                }
+            }
+        }
+    }
 
     // [] overload to get value at particular entry
     float operator[](int idx)const
