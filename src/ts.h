@@ -50,6 +50,30 @@ public:
         this->recalc_dim();
     }
 
+    SwiftTensor(const std::vector<float>& data, const std::vector<int>& shape)
+    {
+        // calculate the size
+        uint64_t intended_size = (shape.size()>0)?shape[0]:0;
+        for(uint64_t i=1;i<shape.size();i++)
+        {
+            intended_size*=shape[i];
+        }
+        // TODO
+        // assert if data and shape has same size 
+
+        // create storage
+        this->storage_ptr = std::make_shared<Storage>(intended_size);
+        this->shape = shape;
+        this->recalc_dim();
+
+        // copy data to created storage
+        float* buffer = this->storage_ptr->buffer;
+        for (int i=0;i<this->size();i++) 
+        {
+            buffer[i] = data[i];
+        }
+    }
+
     SwiftTensor(std::shared_ptr<Storage> storage_ptr, const std::vector<int>& new_shape)
     {
         // calculate the size corresponding to new shape
@@ -106,36 +130,6 @@ public:
         return this->storage_ptr->devtype;
     }
 
-    // element wise addition
-    // considers the underlying buffer as flattened array and add corresponding element
-    // works only for tesnor with same size (shape may be different)
-    SwiftTensor operator+(const SwiftTensor& t)const 
-    {
-        // we can add stuffs considering the buffer as 1d for + operation
-        // what ever the shape, as long as size matches this should work
-        // for axis specific addition, it will be done in separate function to pass axis parameter
-
-        // TODO
-        // size check and throw exception
-        // t.size() == this->size()
-        // generate a tensor with independent storage but same shape
-        SwiftTensor result = SwiftTensor(this->shape);
-
-        // addition loop
-        float* buffer1 = this->storage_ptr->buffer;
-        float* buffer2 = t.get_storage().buffer;
-        for (int i=0;i<this->size();i++) 
-        {
-            result.get_storage().buffer[i] = buffer1[i] + buffer2[i];
-        }
-
-        return result;
-    }
-
-    SwiftTensor operator-(const SwiftTensor& t)const { return SwiftTensor(); }
-    SwiftTensor operator*(const SwiftTensor& t)const { return SwiftTensor(); }
-    SwiftTensor operator/(const SwiftTensor& t)const { return SwiftTensor(); }
-
     // [] overload to get value at particular entry
     float operator[](int idx)const
     {
@@ -167,6 +161,114 @@ public:
         }
 
         return this->storage_ptr->buffer[offset];
+    }
+
+    // element wise addition
+    // considers the underlying buffer as flattened array and add corresponding element
+    // works only for tesnor with same size (shape may be different)
+    SwiftTensor operator+(const SwiftTensor& t)const 
+    {
+        // we can add stuffs considering the buffer as 1d for + operation
+        // what ever the shape, as long as size matches this should work
+        // for axis specific addition, it will be done in separate function to pass axis parameter
+
+        // TODO
+        // size check and throw exception
+        // t.size() == this->size()
+        // generate a tensor with independent storage but same shape
+        SwiftTensor result = SwiftTensor(this->shape);
+
+        // addition loop
+        float* buffer1 = this->storage_ptr->buffer;
+        float* buffer2 = t.get_storage().buffer;
+        for (int i=0;i<this->size();i++) 
+        {
+            result.get_storage().buffer[i] = buffer1[i] + buffer2[i];
+        }
+
+        return result;
+    }
+
+    SwiftTensor operator-(const SwiftTensor& t)const
+    { 
+        // we can add stuffs considering the buffer as 1d for + operation
+        // what ever the shape, as long as size matches this should work
+        // for axis specific addition, it will be done in separate function to pass axis parameter
+        SwiftTensor result = SwiftTensor(this->shape);
+
+        // subtraction loop
+        float* buffer1 = this->storage_ptr->buffer;
+        float* buffer2 = t.get_storage().buffer;
+        for (int i=0;i<this->size();i++) 
+        {
+            result.get_storage().buffer[i] = buffer1[i] - buffer2[i];
+        }
+
+        return result;
+    }
+
+    SwiftTensor operator*(const SwiftTensor& t)const { return SwiftTensor(); }
+    SwiftTensor operator/(const SwiftTensor& t)const { return SwiftTensor(); }
+
+    // element wise add the floating number
+    SwiftTensor operator+(const float num)const 
+    {
+        SwiftTensor result = SwiftTensor(this->shape);
+
+        // addition loop
+        float* buffer1 = this->storage_ptr->buffer;
+        for (int i=0;i<this->size();i++) 
+        {
+            result.get_storage().buffer[i] = buffer1[i] + num;
+        }
+
+        return result;
+    }
+
+    SwiftTensor operator-(const float num)const
+    { 
+        SwiftTensor result = SwiftTensor(this->shape);
+
+        // subtraction loop
+        float* buffer1 = this->storage_ptr->buffer;
+        for (int i=0;i<this->size();i++) 
+        {
+            result.get_storage().buffer[i] = buffer1[i] - num;
+        }
+
+        return result;
+    }
+
+    SwiftTensor operator*(const float num)const { return SwiftTensor(); }
+    SwiftTensor operator/(const float num)const { return SwiftTensor(); }
+
+    // element wise add the floating number
+    friend SwiftTensor operator+(const float num, const SwiftTensor& t)
+    {
+        SwiftTensor result = SwiftTensor(t.shape);
+
+        // addition loop
+        float* buffer1 = t.storage_ptr->buffer;
+        for (int i=0;i<t.size();i++) 
+        {
+            result.get_storage().buffer[i] = num + buffer1[i];
+        }
+
+        return result;
+    }
+
+    friend SwiftTensor operator-(const float num, const SwiftTensor& t)
+    { 
+        SwiftTensor result = SwiftTensor(t.shape);
+
+        // subtraction loop
+        float* buffer1 = t.storage_ptr->buffer;
+        for (int i=0;i<t.size();i++) 
+        {
+            result.get_storage().buffer[i] = num - buffer1[i];
+        }
+
+        return result;
     }
 
     // [] overload to get value at particular entry
