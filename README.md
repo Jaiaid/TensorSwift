@@ -29,8 +29,10 @@ without openmp support
 make OMP=1
 ```
 
-To control number of thread employed for parallelization modify in ts.h,
-```#define SYS_PARAM_CPUCOUNT 8```
+To control number of thread employed for parallelization, do following modification in ts.h
+```
+#define SYS_PARAM_CPUCOUNT 8
+```
 change the number according to your system's core count
 
 Output will be an executable file tensorswift.cpython-38-x86_64-linux-gnu.so (depends on python version)
