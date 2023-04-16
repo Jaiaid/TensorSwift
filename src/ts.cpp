@@ -266,9 +266,13 @@ float ts::SwiftTensor::vecprod(float* bf1, float* bf2, int rowsize)const
     // It is implemented because our underlying storage is as a 1D array stored row-wise.
     // Thus, to multiply the a vector by the column of a matrix, we index the matrix accordingly.
     float sum = 0;
+    #ifdef BUILD_OPENMP
+    omp_set_num_threads(SYS_PARAM_CPUCOUNT);
+    #pragma omp parallel for reduction (+:sum)
+    #endif
     for (int i = 0; i < rowsize; i++)
     {
-        sum += bf1[i] * bf2[i];
+        sum = sum + bf1[i] * bf2[i];
     }
     return sum;
 }
@@ -292,6 +296,10 @@ ts::SwiftTensor ts::SwiftTensor::dot (const SwiftTensor& t)const
     float* buffer2 = t.get_storage().buffer;
     int k = -1;
     int l = 0;
+    #ifdef BUILD_OPENMP
+    omp_set_num_threads(SYS_PARAM_CPUCOUNT);
+    #pragma omp parallel for
+    #endif
     for(int i = 0; i < (t1s[1]*t2s[2]); i++)
     {
         if(i%t1s[2] == 0) { k++; l = 0;}
@@ -330,6 +338,10 @@ ts::SwiftTensor ts::SwiftTensor::sum (const SwiftTensor& t)
     std::vector<int> newshape = {1,1};
     SwiftTensor result = SwiftTensor(newshape);
     float* buffer = t.get_storage().buffer;
+    #ifdef BUILD_OPENMP
+    omp_set_num_threads(SYS_PARAM_CPUCOUNT);
+    #pragma omp parallel for reduction (+:sum)
+    #endif
     for (int i = 0; i < t.size(); i++)
     {
         sum = sum + buffer[i];
