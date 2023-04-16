@@ -130,103 +130,6 @@ public:
         return this->storage_ptr->devtype;
     }
 
-<<<<<<< HEAD
-    // element wise addition
-    // considers the underlying buffer as flattened array and add corresponding element
-    // works only for tesnor with same size (shape may be different)
-    SwiftTensor operator+(const SwiftTensor& t)const 
-    {
-        // we can add stuffs considering the buffer as 1d for + operation
-        // what ever the shape, as long as size matches this should work
-        // for axis specific addition, it will be done in separate function to pass axis parameter
-
-        // TODO
-        // size check and throw exception
-        // t.size() == this->size()
-        // generate a tensor with independent storage but same shape
-        SwiftTensor result = SwiftTensor(this->shape);
-
-        // addition loop
-        float* buffer1 = this->storage_ptr->buffer;
-        float* buffer2 = t.get_storage().buffer;
-        for (int i=0;i<this->size();i++) 
-        {
-            result.get_storage().buffer[i] = buffer1[i] + buffer2[i];
-        }
-
-        return result;
-    }
-
-    SwiftTensor operator-(const SwiftTensor& t)const { return SwiftTensor(); }
-    
-    SwiftTensor operator*(const SwiftTensor& t)const 
-    {
-
-        SwiftTensor result = SwiftTensor(this->shape);
-
-        float* buffer1 = this->storage_ptr->buffer;
-        float* buffer2 = t.get_storage().buffer;
-
-        if(this->storage_ptr->size > 1 && t.get_storage().size > 1) {
-            result = this.matmul(t);
-        } else {
-            for (int i=0;i<this->size();i++) 
-            {
-                result.get_storage().buffer[i] = buffer1[i] * buffer2[i];
-            }
-        }
-        
-        return result;
-    }
-
-    SwiftTensor operator/(const SwiftTensor& t)const
-    { 
-        SwiftTensor result = SwiftTensor(this->shape);
-
-        float* buffer1 = this->storage_ptr->buffer;
-        float* buffer2 = t.get_storage().buffer;
-        for (int i=0;i<this->size();i++) 
-        {
-            result.get_storage().buffer[i] = buffer1[i] / buffer2[i];
-        }
-
-        return result;
-    }
-
-    SwiftTensor matmul (const SwiftTensor& t)
-    {
-        SwiftTensor result = SwiftTensor(this->shape);
-
-        float* buffer1 = this->storage_ptr->buffer;
-        float* buffer2 = t.get_storage().buffer;
-
-        uint64_t thisize = this->storage_ptr->size;
-        uint64_t tsize = t.get_storage().size;
-        
-        // Initialize elements in result to 0.
-        for(i = 0; i < r1; ++i)
-        {
-            for(j = 0; j < c2; ++j)
-            {
-                mult[i][j]=0;
-            }
-        }
-
-        // Multiplying both matrices and update the result.
-        for(i = 0; i < r1; ++i)
-        {
-            for(j = 0; j < c2; ++j)
-            {
-                for(k = 0; k < c1; ++k)
-                {
-                    mult[i][j] += a[i][k] * b[k][j];
-                }
-            }
-        }
-    }
-
-=======
->>>>>>> 3fad5a75abc1fd0b9b452ebc93a141d6b70a3a94
     // [] overload to get value at particular entry
     float operator[](int idx)const
     {
@@ -304,8 +207,144 @@ public:
         return result;
     }
 
-    SwiftTensor operator*(const SwiftTensor& t)const { return SwiftTensor(); }
-    SwiftTensor operator/(const SwiftTensor& t)const { return SwiftTensor(); }
+    SwiftTensor operator*(const SwiftTensor& t)const 
+    {
+        std::vector<int> thisshape = this->shape;
+        std::vector<int> tshape = t.shape;
+        
+        // Considering the shape of the input tensor, the output of the product may differ
+        // If any of the two tensor is a matrix, we proceed with a matrix multiplication
+        if ((thisshape[1] > 1 && thisshape[2] > 1) || (tshape[1] > 1 && tshape[2] > 1))
+            return this->matmul(t);
+
+        // If all the tensors are scalar, we perform a simple multiplication
+        if ((thisshape[1] == 1 && thisshape[2] == 1) && (tshape[1] == 1 && tshape[2] == 1))
+            return this->multiply(t);
+
+        // By default, we perform a dot product, element-wise multiplication, and
+        // return the resulting array. If the user wants to return a single value
+        // he can call the sum operation on the output array.
+        return this->dot(t);
+    }
+
+    SwiftTensor multiply(const SwiftTensor& t)const 
+    {
+        // This function only executes when both tensors have the same size
+        if((this->shape[1] != t.shape[1]) || (this->shape[2] != t.shape[2])) 
+        {
+            throw std::invalid_argument("Imcompatible tensor dimensions.");
+        }
+        else {
+            SwiftTensor result = SwiftTensor(this->shape);
+
+            // multiplication loop
+            float* buffer1 = this->storage_ptr->buffer;
+            float* buffer2 = t.get_storage().buffer;
+            for (int i=0;i<this->size();i++) 
+            {
+                result.get_storage().buffer[i] = buffer1[i] * buffer2[i];
+            }
+
+            return result;
+        }   
+    }
+
+    float vecprod(float* bf1, float* bf2, int rowsize)const
+    {
+        // This vector product multiplies two arrays.
+        // It is implemented because our underlying storage is as a 1D array stored row-wise.
+        // Thus, to multiply the a vector by the column of a matrix, we index the matrix accordingly.
+        float sum = 0;
+        for (int i = 0; i < rowsize; i++)
+        {
+            sum += bf1[i] * bf2[i];
+        }
+        return sum;
+    }
+
+    SwiftTensor dot (const SwiftTensor& t)const
+    {
+        // To perform a dot poduct between two tensors, the number of column in the left tensor
+        // should equal the number of rows in the right tensor.
+        if(this->shape[2] != t.shape[1]) 
+        {
+            throw std::invalid_argument("Imcompatible tensor dimensions.");
+        }
+
+        std::vector<int> t1s = this->shape; // this tensor's shape
+        std::vector<int> t2s = t.shape; // second tensor's shape
+        std::vector<int> newshape = {t1s[1], t2s[2]};
+        SwiftTensor result = SwiftTensor(newshape);
+
+        float* buffer1 = this->storage_ptr->buffer;
+        float* buffer2 = t.get_storage().buffer;
+        int k = -1;
+        int l = 0;
+        for(int i = 0; i < (t1s[1]*t2s[2]); i++)
+        {
+            if(i%t1s[2] == 0) { k++; l = 0;}
+            float buffer1_slice[t1s[2]];
+            float buffer2_slice[t1s[2]];
+            // Take one row from the first tensor and one column from the second
+            for(int j = 0; j < t1s[2]; j++)
+            {
+                buffer1_slice[j] = buffer1[k*t1s[2] + j];
+                buffer2_slice[j] = buffer2[l+j*t1s[2]];
+            }
+
+            // Multipy the row from the first tensor with the second tensor
+            result.get_storage().buffer[i] = vecprod(buffer1_slice, buffer2_slice, t1s[2]);
+            l++;
+        }
+        return result;
+    }
+
+    SwiftTensor matmul (const SwiftTensor& t)const
+    {
+        // As in numpy, both dot and matmul yield the same results, 
+        // but the matmul is recommended for matrices.
+        
+        // To-Do Look into the how to make matmul work more for 2D than 1D;
+        // Currently it also used the dot product as method.
+
+        return this->dot(t);
+    }
+
+    SwiftTensor sum (const SwiftTensor& t)
+    {
+        float sum = 0;
+        std::vector<int> newshape = {1,1};
+        SwiftTensor result = SwiftTensor(newshape);
+        float* buffer = t.get_storage().buffer;
+        for (int i = 0; i < t.size(); i++)
+        {
+            sum = sum + buffer[i];
+        }
+        result.get_storage().buffer[0] = sum;
+        return result;
+    }
+
+    SwiftTensor operator/(const SwiftTensor& t)const
+    { 
+        // This function only executes when both tensors have the same size
+        if((this->shape[1] != t.shape[1]) || (this->shape[2] != t.shape[2])) 
+        {
+            throw std::invalid_argument("Imcompatible tensor dimensions.");
+        }
+        else {
+            SwiftTensor result = SwiftTensor(this->shape);
+
+        // subtraction loop
+        float* buffer1 = this->storage_ptr->buffer;
+        float* buffer2 = t.get_storage().buffer;
+        for (int i=0;i<this->size();i++) 
+        {
+            result.get_storage().buffer[i] = buffer1[i] / buffer2[i];
+        }
+
+        return result;
+        }
+    }
 
     // element wise add the floating number
     SwiftTensor operator+(const float num)const 
@@ -335,9 +374,35 @@ public:
 
         return result;
     }
+    
 
-    SwiftTensor operator*(const float num)const { return SwiftTensor(); }
-    SwiftTensor operator/(const float num)const { return SwiftTensor(); }
+    SwiftTensor operator*(const float num)const 
+    {
+        SwiftTensor result = SwiftTensor(this->shape);
+
+        // multiplication loop
+        float* buffer1 = this->storage_ptr->buffer;
+        for (int i=0;i<this->size();i++) 
+        {
+            result.get_storage().buffer[i] = buffer1[i] * num;
+        }
+
+        return result;
+    }
+
+    SwiftTensor operator/(const float num)const 
+    { 
+        SwiftTensor result = SwiftTensor(this->shape);
+
+        // division loop
+        float* buffer1 = this->storage_ptr->buffer;
+        for (int i=0;i<this->size();i++) 
+        {
+            result.get_storage().buffer[i] = buffer1[i] / num;
+        }
+
+        return result;
+    }
 
     // element wise add the floating number
     friend SwiftTensor operator+(const float num, const SwiftTensor& t)
@@ -367,6 +432,22 @@ public:
 
         return result;
     }
+
+    friend SwiftTensor operator*(const float num, const SwiftTensor& t)
+    { 
+        SwiftTensor result = SwiftTensor(t.shape);
+
+        // multiplication loop
+        float* buffer1 = t.storage_ptr->buffer;
+        for (int i=0;i<t.size();i++) 
+        {
+            result.get_storage().buffer[i] = num * buffer1[i];
+        }
+
+        return result;
+    }
+
+    // There is no implementation of a division of a number by SwiftTensor
 
     // [] overload to get value at particular entry
     void set(int idx, float val)const
