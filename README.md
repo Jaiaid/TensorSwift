@@ -37,7 +37,10 @@ change the number according to your system's core count
 
 Output will be an executable file tensorswift.cpython-38-x86_64-linux-gnu.so (depends on python version)
 
-
+To clean outputs
+```
+make clean
+```
 
 ## Example usage
 From the same folder where tensorswift.cpython-38-x86_64-linux-gnu.so exists
