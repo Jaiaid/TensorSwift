@@ -4,6 +4,11 @@
 #include <memory>
 #include <iostream>
 
+#ifdef BUILD_OPENMP
+#define SYS_PARAM_CPUCOUNT 8
+#include <omp.h>
+#endif
+
 #include "storage.h"
 
 class SwiftTensor
@@ -181,6 +186,12 @@ public:
         // addition loop
         float* buffer1 = this->storage_ptr->buffer;
         float* buffer2 = t.get_storage().buffer;
+
+        #ifdef BUILD_OPENMP
+        omp_set_num_threads(SYS_PARAM_CPUCOUNT);
+        printf("dasdasdas\n");
+        #pragma omp parallel for
+        #endif
         for (int i=0;i<this->size();i++) 
         {
             result.get_storage().buffer[i] = buffer1[i] + buffer2[i];
@@ -199,6 +210,10 @@ public:
         // subtraction loop
         float* buffer1 = this->storage_ptr->buffer;
         float* buffer2 = t.get_storage().buffer;
+        #ifdef BUILD_OPENMP
+        omp_set_num_threads(SYS_PARAM_CPUCOUNT);
+        #pragma omp parallel for
+        #endif
         for (int i=0;i<this->size();i++) 
         {
             result.get_storage().buffer[i] = buffer1[i] - buffer2[i];
@@ -240,6 +255,10 @@ public:
             // multiplication loop
             float* buffer1 = this->storage_ptr->buffer;
             float* buffer2 = t.get_storage().buffer;
+            #ifdef BUILD_OPENMP
+            omp_set_num_threads(SYS_PARAM_CPUCOUNT);
+            #pragma omp parallel for
+            #endif
             for (int i=0;i<this->size();i++) 
             {
                 result.get_storage().buffer[i] = buffer1[i] * buffer2[i];
@@ -337,6 +356,10 @@ public:
         // subtraction loop
         float* buffer1 = this->storage_ptr->buffer;
         float* buffer2 = t.get_storage().buffer;
+        #ifdef BUILD_OPENMP
+        omp_set_num_threads(SYS_PARAM_CPUCOUNT);
+        #pragma omp parallel for
+        #endif
         for (int i=0;i<this->size();i++) 
         {
             result.get_storage().buffer[i] = buffer1[i] / buffer2[i];
@@ -353,6 +376,10 @@ public:
 
         // addition loop
         float* buffer1 = this->storage_ptr->buffer;
+        #ifdef BUILD_OPENMP
+        omp_set_num_threads(SYS_PARAM_CPUCOUNT);
+        #pragma omp parallel for
+        #endif
         for (int i=0;i<this->size();i++) 
         {
             result.get_storage().buffer[i] = buffer1[i] + num;
@@ -367,6 +394,10 @@ public:
 
         // subtraction loop
         float* buffer1 = this->storage_ptr->buffer;
+        #ifdef BUILD_OPENMP
+        omp_set_num_threads(SYS_PARAM_CPUCOUNT);
+        #pragma omp parallel for
+        #endif
         for (int i=0;i<this->size();i++) 
         {
             result.get_storage().buffer[i] = buffer1[i] - num;
@@ -382,6 +413,10 @@ public:
 
         // multiplication loop
         float* buffer1 = this->storage_ptr->buffer;
+        #ifdef BUILD_OPENMP
+        omp_set_num_threads(SYS_PARAM_CPUCOUNT);
+        #pragma omp parallel for
+        #endif
         for (int i=0;i<this->size();i++) 
         {
             result.get_storage().buffer[i] = buffer1[i] * num;
@@ -396,6 +431,10 @@ public:
 
         // division loop
         float* buffer1 = this->storage_ptr->buffer;
+        #ifdef BUILD_OPENMP
+        omp_set_num_threads(SYS_PARAM_CPUCOUNT);
+        #pragma omp parallel for
+        #endif
         for (int i=0;i<this->size();i++) 
         {
             result.get_storage().buffer[i] = buffer1[i] / num;
@@ -411,6 +450,10 @@ public:
 
         // addition loop
         float* buffer1 = t.storage_ptr->buffer;
+        #ifdef BUILD_OPENMP
+        omp_set_num_threads(SYS_PARAM_CPUCOUNT);
+        #pragma omp parallel for
+        #endif
         for (int i=0;i<t.size();i++) 
         {
             result.get_storage().buffer[i] = num + buffer1[i];
@@ -425,6 +468,10 @@ public:
 
         // subtraction loop
         float* buffer1 = t.storage_ptr->buffer;
+        #ifdef BUILD_OPENMP
+        omp_set_num_threads(SYS_PARAM_CPUCOUNT);
+        #pragma omp parallel for
+        #endif
         for (int i=0;i<t.size();i++) 
         {
             result.get_storage().buffer[i] = num - buffer1[i];
@@ -439,6 +486,10 @@ public:
 
         // multiplication loop
         float* buffer1 = t.storage_ptr->buffer;
+        #ifdef BUILD_OPENMP
+        omp_set_num_threads(SYS_PARAM_CPUCOUNT);
+        #pragma omp parallel for
+        #endif
         for (int i=0;i<t.size();i++) 
         {
             result.get_storage().buffer[i] = num * buffer1[i];

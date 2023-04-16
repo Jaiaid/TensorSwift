@@ -19,9 +19,23 @@ pip3 install --no-cache-dir pybind11
 
 ## Build
 To build 
-```make```
+
+with openmp support (for cpu acceleration)
+```
+make
+```
+without openmp support
+```
+make OMP=1
+```
+
+To control number of thread employed for parallelization modify in ts.h,
+```#define SYS_PARAM_CPUCOUNT 8```
+change the number according to your system's core count
 
 Output will be an executable file tensorswift.cpython-38-x86_64-linux-gnu.so (depends on python version)
+
+
 
 ## Example usage
 From the same folder where tensorswift.cpython-38-x86_64-linux-gnu.so exists
