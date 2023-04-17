@@ -77,6 +77,8 @@ namespace ts
 
         SwiftTensor operator/(const SwiftTensor& t)const;
 
+        SwiftTensor get_T()const;
+
         // element wise add the floating number
         SwiftTensor operator+(const float num)const;
 

@@ -25,7 +25,7 @@ public:
     Storage(uint64_t size, STORAGE_DEVICE devtype=STORAGE_DEVICE::CPU)
     {
         if (devtype != STORAGE_DEVICE::GPU) {
-            buffer = new float[size];
+            buffer = new float[size]();
         }
         else {
         }

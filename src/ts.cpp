@@ -211,32 +211,47 @@ ts::SwiftTensor ts::SwiftTensor::operator-(const SwiftTensor& t)const
     return result;
 }
 
+bool is_1d(const std::vector<int>& shape) {
+    return (shape.size() == 1) || (shape.size() == 2 && shape[0] == 1 && shape[1] > 1);
+}
+
+bool is_2d(const std::vector<int>& shape) {
+    return shape.size() == 2 && shape[0] > 1 and shape[1] > 1;
+}
+
 
 ts::SwiftTensor ts::SwiftTensor::operator*(const SwiftTensor& t)const 
 {
     std::vector<int> thisshape = this->shape;
     std::vector<int> tshape = t.shape;
-    
-    // Considering the shape of the input tensor, the output of the product may differ
-    // If any of the two tensor is a matrix, we proceed with a matrix multiplication
-    if ((thisshape[1] > 1 && thisshape[2] > 1) || (tshape[1] > 1 && tshape[2] > 1))
-        return this->matmul(t);
 
-    // If all the tensors are scalar, we perform a simple multiplication
-    if ((thisshape[1] == 1 && thisshape[2] == 1) && (tshape[1] == 1 && tshape[2] == 1))
-        return this->multiply(t);
+    try {
 
-    // By default, we perform a dot product, element-wise multiplication, and
-    // return the resulting array. If the user wants to return a single value
-    // he can call the sum operation on the output array.
-    return this->dot(t);
+        // Considering the shape of the input tensor, the output of the product may differ
+        // If any of the two tensor is a matrix, we proceed with a matrix multiplication
+        if (is_2d(thisshape) || is_2d(tshape))
+            return this->matmul(t);
+
+        // // If all the tensors are scalar, we perform a simple multiplication
+        // if (is_1d(thisshape) && is_1d(tshape) && thisshape[0] == 1 && tshape[0] == 1)
+        //     return this->multiply(t);
+
+        // By default, we perform a dot product, element-wise multiplication, and
+        // return the resulting array. If the user wants to return a single value
+        // he can call the sum operation on the output array.
+        return this->dot(t);
+
+    } catch (std::invalid_argument& e) {
+        std::cout << "Error: " << e.what() << std::endl;
+    }
+
 }
 
 
 ts::SwiftTensor ts::SwiftTensor::multiply(const SwiftTensor& t)const 
 {
     // This function only executes when both tensors have the same size
-    if((this->shape[1] != t.shape[1]) || (this->shape[2] != t.shape[2])) 
+    if((this->shape[0] != t.shape[0]) || (this->shape[1] != t.shape[1])) 
     {
         throw std::invalid_argument("Imcompatible tensor dimensions.");
     }
@@ -278,49 +293,52 @@ float ts::SwiftTensor::vecprod(float* bf1, float* bf2, int rowsize)const
 }
 
 
-ts::SwiftTensor ts::SwiftTensor::dot (const SwiftTensor& t)const
+ts::SwiftTensor ts::SwiftTensor::dot(const SwiftTensor& t)const
 {
     // To perform a dot poduct between two tensors, the number of column in the left tensor
     // should equal the number of rows in the right tensor.
-    if(this->shape[2] != t.shape[1]) 
-    {
-        throw std::invalid_argument("Imcompatible tensor dimensions.");
-    }
-
+    
     std::vector<int> t1s = this->shape; // this tensor's shape
     std::vector<int> t2s = t.shape; // second tensor's shape
-    std::vector<int> newshape = {t1s[1], t2s[2]};
+
+    if(is_1d(t1s) && is_1d(t2s) && t1s[0] != t2s[0]) 
+        throw std::invalid_argument("Imcompatible tensor dimensions.");
+
+    if((is_2d(t1s) || is_2d(t2s)) && (t1s[1] != t2s[0]))
+        throw std::invalid_argument("Imcompatible tensor dimensions.");
+
+    std::vector<int> newshape = {t1s[0], t2s[1]};
     SwiftTensor result = SwiftTensor(newshape);
 
     float* buffer1 = this->storage_ptr->buffer;
     float* buffer2 = t.get_storage().buffer;
     int k = -1;
     int l = 0;
-    #ifdef BUILD_OPENMP
-    omp_set_num_threads(SYS_PARAM_CPUCOUNT);
-    #pragma omp parallel for
-    #endif
-    for(int i = 0; i < (t1s[1]*t2s[2]); i++)
+    // #ifdef BUILD_OPENMP
+    // omp_set_num_threads(SYS_PARAM_CPUCOUNT);
+    // #pragma omp parallel for
+    // #endif
+    for(int i = 0; i < (t1s[0]*t2s[1]); i++)
     {
-        if(i%t1s[2] == 0) { k++; l = 0;}
-        float buffer1_slice[t1s[2]];
-        float buffer2_slice[t1s[2]];
+        if(i%t1s[1] == 0) { k++; l = 0;}
+        float buffer1_slice[t1s[1]];
+        float buffer2_slice[t1s[1]];
         // Take one row from the first tensor and one column from the second
-        for(int j = 0; j < t1s[2]; j++)
+        for(int j = 0; j < t1s[1]; j++)
         {
-            buffer1_slice[j] = buffer1[k*t1s[2] + j];
-            buffer2_slice[j] = buffer2[l+j*t1s[2]];
+            buffer1_slice[j] = buffer1[k*t1s[1] + j];
+            buffer2_slice[j] = buffer2[l+j*t1s[1]];
         }
 
         // Multipy the row from the first tensor with the second tensor
-        result.get_storage().buffer[i] = vecprod(buffer1_slice, buffer2_slice, t1s[2]);
+        result.get_storage().buffer[i] = vecprod(buffer1_slice, buffer2_slice, t1s[1]);
         l++;
     }
     return result;
 }
 
 
-ts::SwiftTensor ts::SwiftTensor::matmul (const SwiftTensor& t)const
+ts::SwiftTensor ts::SwiftTensor::matmul(const SwiftTensor& t)const
 {
     // As in numpy, both dot and matmul yield the same results, 
     // but the matmul is recommended for matrices.
@@ -328,14 +346,17 @@ ts::SwiftTensor ts::SwiftTensor::matmul (const SwiftTensor& t)const
     // To-Do Look into the how to make matmul work more for 2D than 1D;
     // Currently it also used the dot product as method.
 
+    if(this->shape[1] != t.shape[0]) 
+        throw std::invalid_argument("Imcompatible tensor dimensions.");
+
     return this->dot(t);
 }
 
 
-ts::SwiftTensor ts::SwiftTensor::sum (const SwiftTensor& t)
+ts::SwiftTensor ts::SwiftTensor::sum(const SwiftTensor& t)
 {
     float sum = 0;
-    std::vector<int> newshape = {1,1};
+    std::vector<int> newshape = {1,};
     SwiftTensor result = SwiftTensor(newshape);
     float* buffer = t.get_storage().buffer;
     #ifdef BUILD_OPENMP
@@ -354,7 +375,7 @@ ts::SwiftTensor ts::SwiftTensor::sum (const SwiftTensor& t)
 ts::SwiftTensor ts::SwiftTensor::operator/(const SwiftTensor& t)const
 { 
     // This function only executes when both tensors have the same size
-    if((this->shape[1] != t.shape[1]) || (this->shape[2] != t.shape[2])) 
+    if((this->shape[0] != t.shape[0]) || (this->shape[1] != t.shape[1])) 
     {
         throw std::invalid_argument("Imcompatible tensor dimensions.");
     }
@@ -375,6 +396,33 @@ ts::SwiftTensor ts::SwiftTensor::operator/(const SwiftTensor& t)const
 
         return result;
     }
+}
+
+ts::SwiftTensor ts::SwiftTensor::get_T()const
+{
+    std::vector<int> t1s = this->shape;
+    std::vector<int> newshape;
+    
+    if(is_1d(t1s) && t1s.size() == 1)
+        newshape = {1, t1s[0]};
+    else {
+        newshape = {t1s[1], t1s[0]};
+    }
+    SwiftTensor result = SwiftTensor(newshape);
+    float* buffer1 = this->storage_ptr->buffer;
+    uint64_t k = -1;
+    // #ifdef BUILD_OPENMP
+    // omp_set_num_threads(SYS_PARAM_CPUCOUNT);
+    // #pragma omp parallel for
+    // #endif
+    for (uint64_t i=0; i< newshape[0]*newshape[1];i++) 
+    {
+        if(i%newshape[1] == 0) { k++;}
+        uint64_t idx = (i%newshape[1])*newshape[0]+k;
+        result.get_storage().buffer[i] = buffer1[idx];
+    }
+
+    return result;
 }
 
 
