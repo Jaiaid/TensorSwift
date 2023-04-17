@@ -14,6 +14,7 @@ if __name__=="__main__":
     for size in TEST_SIZE:
         data1 = list(np.random.randn(size))
         data2 = list(np.random.randn(size))
+        diviser = np.random.randint(2, 25)
 
         torch_tensor1 = torch.FloatTensor(data1)
         torch_tensor2 = torch.FloatTensor(data2)
@@ -31,10 +32,10 @@ if __name__=="__main__":
                 swifttensor3 = swifttensor1 + swifttensor2
             elif i==1:
                 swifttensor3 = swifttensor1 - swifttensor2
-            # elif i==2:
-            #     swifttensor3 = swifttensor1.dot(swifttensor2)
-            # elif i==3:
-            #     swifttensor3 = swifttensor1 / swifttensor2
+            elif i==2:
+                swifttensor3 = swifttensor1 * (swifttensor2)
+            elif i==3:
+                swifttensor3 = swifttensor1 / diviser
 
             time2 = time.time()
             swift_times.append(time2-time1)
@@ -49,10 +50,10 @@ if __name__=="__main__":
                 torch_tensor3 = torch_tensor1 + torch_tensor2
             elif i==1:
                 torch_tensor3 = torch_tensor1 - torch_tensor2
-            # elif i==2:
-            #     torch_tensor3 = torch_tensor1 * torch_tensor2
-            # elif i==3:
-            #     torch_tensor3 = torch_tensor1 / torch_tensor2
+            elif i==2:
+                torch_tensor3 = torch_tensor1 * torch_tensor2
+            elif i==3:
+                torch_tensor3 = torch_tensor1 / diviser
 
             time2 = time.time()
             torch_times.append(time2-time1)
