@@ -1,6 +1,7 @@
 #include <memory>
 #include <string>
 #include <vector>
+#include <cmath>
 // custom headers
 #include "storage.h"
 #include "ts.h"
@@ -219,31 +220,11 @@ bool is_2d(const std::vector<int>& shape) {
     return shape.size() == 2 && shape[0] > 1 and shape[1] > 1;
 }
 
-
 ts::SwiftTensor ts::SwiftTensor::operator*(const SwiftTensor& t)const 
 {
-    std::vector<int> thisshape = this->shape;
-    std::vector<int> tshape = t.shape;
-
-    try {
-
-        // Considering the shape of the input tensor, the output of the product may differ
-        // If any of the two tensor is a matrix, we proceed with a matrix multiplication
-        if (is_2d(thisshape) || is_2d(tshape))
-            return this->matmul(t);
-
-        // // If all the tensors are scalar, we perform a simple multiplication
-        // if (is_1d(thisshape) && is_1d(tshape) && thisshape[0] == 1 && tshape[0] == 1)
-        //     return this->multiply(t);
-
-        // By default, we perform a dot product, element-wise multiplication, and
-        // return the resulting array. If the user wants to return a single value
-        // he can call the sum operation on the output array.
-        return this->dot(t);
-
-    } catch (std::invalid_argument& e) {
-        std::cout << "Error: " << e.what() << std::endl;
-    }
+    // To align with the default behavior in numpy, the * operator performs
+    // an element-wise multiplication
+    return this->multiply(t);
 
 }
 
@@ -312,27 +293,26 @@ ts::SwiftTensor ts::SwiftTensor::dot(const SwiftTensor& t)const
 
     float* buffer1 = this->storage_ptr->buffer;
     float* buffer2 = t.get_storage().buffer;
-    int k = -1;
-    int l = 0;
-    // #ifdef BUILD_OPENMP
-    // omp_set_num_threads(SYS_PARAM_CPUCOUNT);
-    // #pragma omp parallel for
-    // #endif
+
+    #ifdef BUILD_OPENMP
+    omp_set_num_threads(SYS_PARAM_CPUCOUNT);
+    #pragma omp parallel for collapse(2)
+    #endif
     for(int i = 0; i < (t1s[0]*t2s[1]); i++)
     {
-        if(i%t1s[1] == 0) { k++; l = 0;}
+        int k = floor(i/t2s[1]);
+        int l = i%t2s[1];
         float buffer1_slice[t1s[1]];
         float buffer2_slice[t1s[1]];
         // Take one row from the first tensor and one column from the second
         for(int j = 0; j < t1s[1]; j++)
         {
             buffer1_slice[j] = buffer1[k*t1s[1] + j];
-            buffer2_slice[j] = buffer2[l+j*t1s[1]];
+            buffer2_slice[j] = buffer2[l+j*t2s[1]];
         }
 
         // Multipy the row from the first tensor with the second tensor
         result.get_storage().buffer[i] = vecprod(buffer1_slice, buffer2_slice, t1s[1]);
-        l++;
     }
     return result;
 }
@@ -410,15 +390,14 @@ ts::SwiftTensor ts::SwiftTensor::get_T()const
     }
     SwiftTensor result = SwiftTensor(newshape);
     float* buffer1 = this->storage_ptr->buffer;
-    uint64_t k = -1;
-    // #ifdef BUILD_OPENMP
-    // omp_set_num_threads(SYS_PARAM_CPUCOUNT);
-    // #pragma omp parallel for
-    // #endif
-    for (uint64_t i=0; i< newshape[0]*newshape[1];i++) 
+    #ifdef BUILD_OPENMP
+    omp_set_num_threads(SYS_PARAM_CPUCOUNT);
+    #pragma omp parallel for
+    #endif
+    for (int i=0; i< newshape[0]*newshape[1];i++) 
     {
-        if(i%newshape[1] == 0) { k++;}
-        uint64_t idx = (i%newshape[1])*newshape[0]+k;
+        int k = floor(i/newshape[1]);
+        int idx = (i%newshape[1])*newshape[0]+k;
         result.get_storage().buffer[i] = buffer1[idx];
     }
 
