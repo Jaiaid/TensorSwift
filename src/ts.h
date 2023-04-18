@@ -73,7 +73,7 @@ namespace ts
 
         SwiftTensor matmul (const SwiftTensor& t)const;
 
-        SwiftTensor sum (const SwiftTensor& t);
+        SwiftTensor sum ()const;
 
         SwiftTensor operator/(const SwiftTensor& t)const;
 

@@ -333,17 +333,17 @@ ts::SwiftTensor ts::SwiftTensor::matmul(const SwiftTensor& t)const
 }
 
 
-ts::SwiftTensor ts::SwiftTensor::sum(const SwiftTensor& t)
+ts::SwiftTensor ts::SwiftTensor::sum()const
 {
     float sum = 0;
     std::vector<int> newshape = {1,};
     SwiftTensor result = SwiftTensor(newshape);
-    float* buffer = t.get_storage().buffer;
+    float* buffer = this->storage_ptr->buffer;
     #ifdef BUILD_OPENMP
     omp_set_num_threads(SYS_PARAM_CPUCOUNT);
     #pragma omp parallel for reduction (+:sum)
     #endif
-    for (int i = 0; i < t.size(); i++)
+    for (int i = 0; i < this->size(); i++)
     {
         sum = sum + buffer[i];
     }
