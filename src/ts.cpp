@@ -296,7 +296,7 @@ ts::SwiftTensor ts::SwiftTensor::dot(const SwiftTensor& t)const
 
     #ifdef BUILD_OPENMP
     omp_set_num_threads(SYS_PARAM_CPUCOUNT);
-    #pragma omp parallel for collapse(2)
+    #pragma omp parallel for
     #endif
     for(int i = 0; i < (t1s[0]*t2s[1]); i++)
     {

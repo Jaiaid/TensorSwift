@@ -22,11 +22,11 @@ To build
 
 with openmp support (for cpu acceleration)
 ```
-make
+make OMP=1
 ```
 without openmp support
 ```
-make OMP=1
+make
 ```
 
 To control number of thread employed for parallelization, do following modification in ts.h
