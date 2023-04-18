@@ -101,6 +101,7 @@ if __name__=="__main__":
 
     ax.set_ylabel("execution time (ms)")
     ax.set_xlabel("tensor size")
+    ax.set_ylim([0,6])
     # to align with zero
     ax.set_xticklabels([0] + TEST_SIZE)
     ax.bar(X-0.2, swift_op_bar, width=0.2, label="SwiftTensor", hatch="//")
