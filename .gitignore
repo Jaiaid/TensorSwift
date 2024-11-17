@@ -26,6 +26,9 @@
 *.a
 *.lib
 
+# IDE specific files
+.vscode
+
 # Executables
 *.exe
 *.out
