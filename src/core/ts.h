@@ -6,7 +6,7 @@
 #include <omp.h>
 #endif
 
-#include "storage.h"
+#include <core/storage.h>
 
 namespace ts
 {
@@ -22,6 +22,13 @@ namespace ts
 
         // should call after each event of shape reset
         void recalc_dim();
+
+        // private method to dot product of two floating point array
+        float vecprod(float* bf1, float* bf2, int rowsize)const;
+
+        // private method to multiply with another tensor
+        SwiftTensor multiply(const SwiftTensor& t)const;
+
     public:
         std::vector<int> shape;
         
@@ -32,23 +39,33 @@ namespace ts
         SwiftTensor(const std::vector<float>& data, const std::vector<int>& shape);
 
         SwiftTensor(std::shared_ptr<Storage> storage_ptr, const std::vector<int>& new_shape);
+
+        // [] overload to set value at particular entry
+        void set(int idx, float val)const;
+
+        // [] overload to set value at particular entry
+        void set(const std::vector<int>& idx_list, float val)const;
         
-        // return a new instance with changed view but with same storage
-        SwiftTensor view(const std::vector<int>& shape);
-
-        // return total number of element
+        // return total number of elements
         int size()const;
-
+        
         // get the storage buffer to read
         const Storage& get_storage()const;
 
-        // get stride at different dimension
-        const std::vector<int>& get_stride_list()const;
         // to get device
         // currently there is no way to provide device type when constructing tensor
         // TODO
         // create constructor to provide device type at instantiation
         STORAGE_DEVICE get_device();
+
+        // return a new instance with changed view but with same storage
+        SwiftTensor view(const std::vector<int>& shape);
+
+        // return a transposed view of the tensor, with same storage
+        SwiftTensor get_T()const;
+
+        // get stride at different dimension
+        const std::vector<int>& get_stride_list()const;
 
         // [] overload to get value at particular entry
         float operator[](int idx)const;
@@ -56,40 +73,39 @@ namespace ts
         // [] overload to get value at particular entry
         float operator[](const std::vector<int>& idx_list)const;
 
-        // element wise addition
-        // considers the underlying buffer as flattened array and add corresponding element
+        SwiftTensor sum ()const;
+
+        // element wise addition, subtraction, multiplication and division
+        // considers the underlying buffer as flattened array and  corresponding element
         // works only for tesnor with same size (shape may be different)
+        // if shape is different error will be thrown
         SwiftTensor operator+(const SwiftTensor& t)const;
 
         SwiftTensor operator-(const SwiftTensor& t)const;
 
         SwiftTensor operator*(const SwiftTensor& t)const;
 
-        SwiftTensor multiply(const SwiftTensor& t)const;
-
-        float vecprod(float* bf1, float* bf2, int rowsize)const;
-
-        SwiftTensor dot (const SwiftTensor& t)const;
-
-        SwiftTensor matmul (const SwiftTensor& t)const;
-
-        SwiftTensor sum ()const;
-
         SwiftTensor operator/(const SwiftTensor& t)const;
 
-        SwiftTensor get_T()const;
+        // matrix multiplication of two tensor
+        SwiftTensor matmul (const SwiftTensor& t)const;
+
+        // matrix multiplication can be thought as multiple dot product
+        // we kept it as public as many time 
+        // the operation of matrix multiplication may be said as dot product due to parameter shape
+        SwiftTensor dot (const SwiftTensor& t)const;
 
         // element wise add the floating number
         SwiftTensor operator+(const float num)const;
 
         SwiftTensor operator-(const float num)const;
-        
 
         SwiftTensor operator*(const float num)const;
 
         SwiftTensor operator/(const float num)const;
 
-        // element wise add the floating number
+        // element wise add, sub, mul or div the floating number
+        // floating point number will be lhs parameter
         // declared as friend to ease access of buffer
         friend SwiftTensor operator+(const float num, const SwiftTensor& t);
 
@@ -97,22 +113,21 @@ namespace ts
 
         friend SwiftTensor operator*(const float num, const SwiftTensor& t);
 
-        // There is no implementation of a division of a number by SwiftTensor
+        friend SwiftTensor operator*(const float num, const SwiftTensor& t);
 
-        // [] overload to get value at particular entry
-        void set(int idx, float val)const;
-
-        // [] overload to get value at particular entry
-        void set(const std::vector<int>& idx_list, float val)const;
+        friend SwiftTensor operator/(const float num, const SwiftTensor& t);
     };
     // redeclared the friend function here again to stop compiler warning that "... has not been declared within ‘ts’"
     SwiftTensor operator+(const float num, const SwiftTensor& t);
+
     SwiftTensor operator-(const float num, const SwiftTensor& t);
+
     SwiftTensor operator*(const float num, const SwiftTensor& t);
 
-    // c++ side implementation for python side __repr__ method of object
-    void recursive_tensor_str_format_generation(std::string& tensor_str, std::vector<int>& stride_list, const float* buffer, int len, int& cur_idx, int cur_dimension);
+    SwiftTensor operator/(const float num, const SwiftTensor& t);
 
-    std::string tensorswift_stringify(const SwiftTensor& d);
+    // function to convert a tensor to str
+    // will be helpful to print the tensor data
+    std::string to_str(const SwiftTensor& d);
 }
 #endif

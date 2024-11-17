@@ -3,8 +3,8 @@
 #include <vector>
 #include <cmath>
 // custom headers
-#include "storage.h"
-#include "ts.h"
+#include <core/storage.h>
+#include <core/ts.h>"
 
 
 void ts::SwiftTensor::recalc_dim()
@@ -22,9 +22,12 @@ void ts::SwiftTensor::recalc_dim()
 }
 
 
+// empty constructor, creates a empty tensor storage
 ts::SwiftTensor::SwiftTensor(){ this->storage_ptr = std::make_shared<Storage>(); }
 
 
+// construct a tensor with particular shape
+// allocated from heap, therefore, the entries will be zero
 ts::SwiftTensor::SwiftTensor(const std::vector<int>& shape)
 {
     // calculate the size
@@ -41,6 +44,8 @@ ts::SwiftTensor::SwiftTensor(const std::vector<int>& shape)
 }
 
 
+// construct a tensor with particular shape, filled with data
+// memory is allocated from heap
 ts::SwiftTensor::SwiftTensor(const std::vector<float>& data, const std::vector<int>& shape)
 {
     // calculate the size
@@ -95,6 +100,7 @@ ts::SwiftTensor ts::SwiftTensor::view(const std::vector<int>& shape)
     SwiftTensor new_view = SwiftTensor(this->storage_ptr, shape);
     return new_view;
 }
+
 
 // return total number of element
 int ts::SwiftTensor::size()const
@@ -381,13 +387,15 @@ ts::SwiftTensor ts::SwiftTensor::operator/(const SwiftTensor& t)const
 ts::SwiftTensor ts::SwiftTensor::get_T()const
 {
     std::vector<int> t1s = this->shape;
-    std::vector<int> newshape;
+    std::vector<int> newshape(this->shape.size() < 2?2:this->shape.size());
     
-    if(is_1d(t1s) && t1s.size() == 1)
-        newshape = {1, t1s[0]};
-    else {
-        newshape = {t1s[1], t1s[0]};
+    for (int i = 0;i < this->shape.size() - 2;i++)
+    {
+        newshape[i] = this->shape[i];
     }
+    newshape.push_back(this->shape[this->shape.size() - 1]);
+    newshape.push_back(this->shape[this->shape.size() - 2]);
+
     SwiftTensor result = SwiftTensor(newshape);
     float* buffer1 = this->storage_ptr->buffer;
     #ifdef BUILD_OPENMP
@@ -539,6 +547,23 @@ ts::SwiftTensor ts::operator*(const float num, const SwiftTensor& t)
     return result;
 }
 
+ts::SwiftTensor ts::operator/(const float num, const SwiftTensor& t)
+{ 
+    SwiftTensor result = SwiftTensor(t.shape);
+
+    // multiplication loop
+    float* buffer1 = t.storage_ptr->buffer;
+    #ifdef BUILD_OPENMP
+    omp_set_num_threads(SYS_PARAM_CPUCOUNT);
+    #pragma omp parallel for
+    #endif
+    for (int i=0;i<t.size();i++) 
+    {
+        result.get_storage().buffer[i] = num / buffer1[i];
+    }
+
+    return result;
+}
 // There is no implementation of a division of a number by SwiftTensor
 
 // [] overload to get value at particular entry
@@ -574,7 +599,7 @@ void ts::SwiftTensor::set(const std::vector<int>& idx_list, float val)const
 
 // this should not be this complex
 // but for now it works
-void ts::recursive_tensor_str_format_generation(std::string& tensor_str, std::vector<int>& stride_list, const float* buffer, int len, int& cur_idx, int cur_dimension)
+void recursive_tensor_str_format_generation(std::string& tensor_str, std::vector<int>& stride_list, const float* buffer, int len, int& cur_idx, int cur_dimension)
 {
     do{
         if (cur_dimension < (int)stride_list.size() - 1 && cur_idx%stride_list[cur_dimension]==0) {
@@ -591,7 +616,7 @@ void ts::recursive_tensor_str_format_generation(std::string& tensor_str, std::ve
 }
 
 
-std::string ts::tensorswift_stringify(const SwiftTensor& d)
+std::string ts::to_str(const SwiftTensor& d)
 {
     std::string str_format;
     const float* buffer = d.get_storage().buffer;

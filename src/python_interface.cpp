@@ -2,9 +2,9 @@
 #include <pybind11/operators.h>
 #include <pybind11/stl.h>
 
-#include "python_interface.h"
-#include "data.h"
-#include "ts.h"
+#include <python_interface.h>
+#include <core/data.h>
+#include <core/ts.h>
 
 PYBIND11_MODULE(MODULE_NAME, m)
 {
@@ -33,9 +33,15 @@ PYBIND11_MODULE(MODULE_NAME, m)
         .def(pybind11::init<>())
         .def(pybind11::init<const std::vector<int>&>())
         .def(pybind11::init<const std::vector<float>&, const std::vector<int>&>())
-        .def("view", &ts::SwiftTensor::view, "get changed view of SwiftTensor with same storage")
-        .def("size", &ts::SwiftTensor::size, "get total number of element in SwiftTensor")
+        .def("__getitem__", static_cast<float (ts::SwiftTensor::*)(int)const>(&ts::SwiftTensor::operator[]))
+        .def("__getitem__", static_cast<float (ts::SwiftTensor::*)(const::std::vector<int>&)const>(&ts::SwiftTensor::operator[]))
+        .def("__setitem__", static_cast<void (ts::SwiftTensor::*)(int, float val)const>(&ts::SwiftTensor::set))
+        .def("__setitem__", static_cast<void (ts::SwiftTensor::*)(const::std::vector<int>&, float val)const>(&ts::SwiftTensor::set))
         .def_readonly("shape", &ts::SwiftTensor::shape, "get shape of SwiftTensor")
+        .def("size", &ts::SwiftTensor::size, "get total number of element in SwiftTensor")
+        .def("view", &ts::SwiftTensor::view, "get changed view of SwiftTensor with same storage")
+        .def_property_readonly("T", &ts::SwiftTensor::get_T)
+        .def("sum", &ts::SwiftTensor::sum, "sum the data of a SwiftTensor")
         .def(pybind11::self + pybind11::self)
         .def(pybind11::self - pybind11::self)
         .def(pybind11::self * pybind11::self)
@@ -47,14 +53,8 @@ PYBIND11_MODULE(MODULE_NAME, m)
         .def(float() + pybind11::self)
         .def(float() - pybind11::self)
         .def(float() * pybind11::self)
-        .def("multiply", &ts::SwiftTensor::multiply, "multiply two objects of class SwiftTensor")
+        .def(float() / pybind11::self)
         .def("dot", &ts::SwiftTensor::dot, "multiply and sum two 1D objects of class SwiftTensor")
         .def("matmul", &ts::SwiftTensor::matmul, "multiply and sum two 2D objects of class SwiftTensor")
-        .def("sum", &ts::SwiftTensor::sum, "sum the data of a SwiftTensor")
-        .def_property_readonly("T", &ts::SwiftTensor::get_T)
-        .def("__getitem__", static_cast<float (ts::SwiftTensor::*)(int)const>(&ts::SwiftTensor::operator[]))
-        .def("__getitem__", static_cast<float (ts::SwiftTensor::*)(const::std::vector<int>&)const>(&ts::SwiftTensor::operator[]))
-        .def("__setitem__", static_cast<void (ts::SwiftTensor::*)(int, float val)const>(&ts::SwiftTensor::set))
-        .def("__setitem__", static_cast<void (ts::SwiftTensor::*)(const::std::vector<int>&, float val)const>(&ts::SwiftTensor::set))
-        .def("__repr__", &ts::tensorswift_stringify);
+        .def("__repr__", &ts::to_str);
 }
