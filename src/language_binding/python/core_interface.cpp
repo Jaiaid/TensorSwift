@@ -2,7 +2,7 @@
 #include <pybind11/operators.h>
 #include <pybind11/stl.h>
 
-#include <python_interface.h>
+#include <language_binding/python/core_interface.h>
 #include <core/data.h>
 #include <core/ts.h>
 

@@ -2,9 +2,9 @@
 #include <string>
 #include <vector>
 #include <cmath>
-// custom headers
+
 #include <core/storage.h>
-#include <core/ts.h>"
+#include <core/ts.h>
 
 
 void ts::SwiftTensor::recalc_dim()
@@ -389,7 +389,7 @@ ts::SwiftTensor ts::SwiftTensor::get_T()const
     std::vector<int> t1s = this->shape;
     std::vector<int> newshape(this->shape.size() < 2?2:this->shape.size());
     
-    for (int i = 0;i < this->shape.size() - 2;i++)
+    for (size_t i = 0;i < this->shape.size() - 2;i++)
     {
         newshape[i] = this->shape[i];
     }

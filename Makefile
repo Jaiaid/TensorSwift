@@ -1,8 +1,8 @@
-SRC=src
-SRC_FILES=${SRC}/*.cpp
-HEADER_FILES=${SRC}/*.h
 OPENMP_FLAGS=
 COMPILATION_FLAG=-Isrc
+SRC=src
+SRC_FILES:=$(shell find . -name *.cpp) 
+HEADER_FILES:=$(shell find . -name *.h)
 PYBIND11_INCLUDE:=$(shell python3 -m pybind11 --includes)
 PYTHON_SHARED_LIB_EXTENSION:=$(shell python3-config --extension-suffix)
 
