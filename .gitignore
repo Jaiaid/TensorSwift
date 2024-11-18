@@ -29,6 +29,16 @@
 # IDE specific files
 .vscode
 
+# cmake generated files
+CMakeFiles
+CMakeCache.txt
+*.ninja
+*.cmake
+*.json
+*.tcl
+Testing
+build
+
 # Executables
 *.exe
 *.out
