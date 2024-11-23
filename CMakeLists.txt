@@ -62,7 +62,16 @@ target_include_directories(${CMAKE_PROJECT_NAME} PUBLIC include)
 # set source files, add new file path if new source files added
 set(CORE_SOURCES
 	src/core/ts.cpp)
-set(PYINTERFACE_SOURCES src/language_binding/python/core_interface.cpp)
+
+set(CGRAPH_SOURCES 
+	src/cgraph/cgraph.cpp
+	src/cgraph/cg_op.cpp
+	src/cgraph/cg_node.cpp)
+
+set(PYINTERFACE_SOURCES 
+	src/python/pymodule_interface.cpp
+	src/core/python/core_interface.cpp
+	src/cgraph/python/cgraph_interface.cpp)
 
 
 # compile the source files
