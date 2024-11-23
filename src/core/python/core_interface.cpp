@@ -2,14 +2,12 @@
 #include <pybind11/operators.h>
 #include <pybind11/stl.h>
 
-#include <language_binding/python/core_interface.h>
+#include <core/python/core_interface.h>
 #include <core/data.h>
 #include <core/ts.h>
 
-PYBIND11_MODULE(MODULE_NAME, m)
+void init_core_interface(pybind11::module &m)
 {
-    m.doc() = "TensorSwift plugin by pybind11";
-
     pybind11::class_<Data>(m, MODULE_GENCONTAINER_PYTHONNAME)
         .def(pybind11::init<>())
         .def(pybind11::init<int>())
