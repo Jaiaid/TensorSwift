@@ -1,0 +1,13 @@
+#ifndef _PYTHON_INTERFACE_CGRAPH_H
+#define _PYTHON_INTERFACE_CGRAPH_H
+
+#include <pybind11/pybind11.h>
+
+#define MODULE_CGRAPHCLASS_PYTHONNAME "CGraph"
+#define MODULE_CGRAPHOPCLASS_PYTHONNAME "CGOp"
+#define MODULE_CGRAPHNODECLASS_PYTHONNAME "CGNode"
+#define MODULE_CGRAPHNODEUTILCLASS_PYTHONNAME "CGNodeUtil"
+
+void init_cgraph_interface(pybind11::module &m);
+
+#endif
