@@ -1,6 +1,8 @@
 #ifndef _TS_H
 #define _TS_H
 
+#include <memory>
+
 #ifdef BUILD_OPENMP
 #define SYS_PARAM_CPUCOUNT 8
 #include <omp.h>

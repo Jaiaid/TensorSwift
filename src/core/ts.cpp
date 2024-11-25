@@ -54,10 +54,12 @@ ts::SwiftTensor::SwiftTensor(const std::vector<float>& data, const std::vector<i
     {
         intended_size*=shape[i];
     }
+
     // TODO
     // assert if data and shape has same size 
 
     // create storage
+
     this->storage_ptr = std::make_shared<Storage>(intended_size);
     this->shape = shape;
     this->recalc_dim();
@@ -291,35 +293,43 @@ ts::SwiftTensor ts::SwiftTensor::dot(const SwiftTensor& t)const
     if(is_1d(t1s) && is_1d(t2s) && t1s[0] != t2s[0]) 
         throw std::invalid_argument("Imcompatible tensor dimensions.");
 
-    if((is_2d(t1s) || is_2d(t2s)) && (t1s[1] != t2s[0]))
-        throw std::invalid_argument("Imcompatible tensor dimensions.");
-
-    std::vector<int> newshape = {t1s[0], t2s[1]};
-    SwiftTensor result = SwiftTensor(newshape);
-
-    float* buffer1 = this->storage_ptr->buffer;
-    float* buffer2 = t.get_storage().buffer;
-
-    #ifdef BUILD_OPENMP
-    omp_set_num_threads(SYS_PARAM_CPUCOUNT);
-    #pragma omp parallel for
-    #endif
-    for(int i = 0; i < (t1s[0]*t2s[1]); i++)
-    {
-        int k = floor(i/t2s[1]);
-        int l = i%t2s[1];
-        float buffer1_slice[t1s[1]];
-        float buffer2_slice[t1s[1]];
-        // Take one row from the first tensor and one column from the second
-        for(int j = 0; j < t1s[1]; j++)
-        {
-            buffer1_slice[j] = buffer1[k*t1s[1] + j];
-            buffer2_slice[j] = buffer2[l+j*t2s[1]];
-        }
-
-        // Multipy the row from the first tensor with the second tensor
-        result.get_storage().buffer[i] = vecprod(buffer1_slice, buffer2_slice, t1s[1]);
+    SwiftTensor result;
+    if (is_1d(t1s) && is_1d(t2s)) {
+        result = SwiftTensor(std::vector<int>(1, 1));
+        result.get_storage().buffer[0] = vecprod(this->get_storage().buffer, t.get_storage().buffer, this->shape[0]);
     }
+    else {
+        if((is_2d(t1s) || is_2d(t2s)) && (t1s[1] != t2s[0]))
+            throw std::invalid_argument("Imcompatible tensor dimensions.");
+
+        std::vector<int> newshape = {t1s[0], t2s[1]};
+        result = SwiftTensor(newshape);
+
+        float* buffer1 = this->storage_ptr->buffer;
+        float* buffer2 = t.get_storage().buffer;
+
+        #ifdef BUILD_OPENMP
+        omp_set_num_threads(SYS_PARAM_CPUCOUNT);
+        #pragma omp parallel for
+        #endif
+        for(int i = 0; i < (t1s[0]*t2s[1]); i++)
+        {
+            int k = floor(i/t2s[1]);
+            int l = i%t2s[1];
+            float buffer1_slice[t1s[1]];
+            float buffer2_slice[t1s[1]];
+            // Take one row from the first tensor and one column from the second
+            for(int j = 0; j < t1s[1]; j++)
+            {
+                buffer1_slice[j] = buffer1[k*t1s[1] + j];
+                buffer2_slice[j] = buffer2[l+j*t2s[1]];
+            }
+
+            // Multipy the row from the first tensor with the second tensor
+            result.get_storage().buffer[i] = vecprod(buffer1_slice, buffer2_slice, t1s[1]);
+        }
+    }
+
     return result;
 }
 
@@ -331,9 +341,13 @@ ts::SwiftTensor ts::SwiftTensor::matmul(const SwiftTensor& t)const
     
     // To-Do Look into the how to make matmul work more for 2D than 1D;
     // Currently it also used the dot product as method.
+    if (this->shape.size() != t.shape.size()) {
+        throw std::invalid_argument("Incompatible tensor dimensions. For, A*B dim(A)!=dim(B)");
+    }
 
-    if(this->shape[1] != t.shape[0]) 
-        throw std::invalid_argument("Imcompatible tensor dimensions.");
+    if (this->shape.size() >= 2 && this->shape[this->shape.size() - 1] != t.shape[0]) {
+        throw std::invalid_argument("Incompatible tensor dimensions. For, A*B A.col!=B.row.");
+    }
 
     return this->dot(t);
 }
@@ -386,15 +400,20 @@ ts::SwiftTensor ts::SwiftTensor::operator/(const SwiftTensor& t)const
 
 ts::SwiftTensor ts::SwiftTensor::get_T()const
 {
-    std::vector<int> t1s = this->shape;
-    std::vector<int> newshape(this->shape.size() < 2?2:this->shape.size());
-    
-    for (size_t i = 0;i < this->shape.size() - 2;i++)
-    {
-        newshape[i] = this->shape[i];
+    std::vector<int> newshape(this->shape);
+    int stride = 1;
+
+    if (this->shape.size() == 1) {
+        return SwiftTensor(*this);
     }
-    newshape.push_back(this->shape[this->shape.size() - 1]);
-    newshape.push_back(this->shape[this->shape.size() - 2]);
+
+    for(int i = 0;i < this->shape.size() - 2;i++)
+    {
+        stride *= this->shape[i];
+    }
+    newshape[newshape.size() - 1] = this->shape[this->shape.size() - 2];
+    newshape[newshape.size() - 2] = this->shape[this->shape.size() - 1];
+    
 
     SwiftTensor result = SwiftTensor(newshape);
     float* buffer1 = this->storage_ptr->buffer;
@@ -404,8 +423,11 @@ ts::SwiftTensor ts::SwiftTensor::get_T()const
     #endif
     for (int i=0; i< newshape[0]*newshape[1];i++) 
     {
-        int k = floor(i/newshape[1]);
-        int idx = (i%newshape[1])*newshape[0]+k;
+        int idx = i;
+        if (newshape.size() > 1) {
+            int k = floor(i/newshape[1]);
+            int idx = (i%newshape[1])*newshape[0]+ k + stride;
+        }
         result.get_storage().buffer[i] = buffer1[idx];
     }
 
