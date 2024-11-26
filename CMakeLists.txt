@@ -63,7 +63,8 @@ if (CUDA_FOUND)
 	target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE ${CUDA_LIBRARIES})
 
 	set(CUDA_SOURCES
-		src/device/cuda/cuda_device.cu)
+		src/device/cuda/cuda_device.cu
+		src/device/cuda/ops.cu)
 
 	# compile the cuda files
 	target_sources(${CMAKE_PROJECT_NAME} PRIVATE ${CUDA_SOURCES})
