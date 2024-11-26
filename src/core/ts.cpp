@@ -181,6 +181,9 @@ float ts::SwiftTensor::operator[](const std::vector<int>& idx_list)const
 
 ts::SwiftTensor ts::SwiftTensor::operator+(const SwiftTensor& t)const 
 {
+    if (this->size() != t.size()) {
+        throw std::invalid_argument("unequal number of element between the tensor arguments");
+    }
     // we can add stuffs considering the buffer as 1d for + operation
     // what ever the shape, as long as size matches this should work
     // for axis specific addition, it will be done in separate function to pass axis parameter
@@ -233,7 +236,10 @@ ts::SwiftTensor ts::SwiftTensor::operator+(const SwiftTensor& t)const
 
 
 ts::SwiftTensor ts::SwiftTensor::operator-(const SwiftTensor& t)const
-{ 
+{
+    if (this->size() != t.size()) {
+        throw std::invalid_argument("unequal number of element between the tensor arguments");
+    }
     // we can add stuffs considering the buffer as 1d for + operation
     // what ever the shape, as long as size matches this should work
     // for axis specific addition, it will be done in separate function to pass axis parameter
@@ -289,6 +295,9 @@ bool is_2d(const std::vector<int>& shape) {
 
 ts::SwiftTensor ts::SwiftTensor::operator*(const SwiftTensor& t)const 
 {
+    if (this->size() != t.size()) {
+        throw std::invalid_argument("unequal number of element between the tensor arguments");
+    }
     // To align with the default behavior in numpy, the * operator performs
     // an element-wise multiplication
     return this->multiply(t);

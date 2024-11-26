@@ -2,6 +2,9 @@
 #define _CUDA_OPS_H_
 
 #ifndef CUDA_BLOCKSIZE
+// should depend on compute capability
+// should be modified based on build configuration
+// here we have kept it at constant 256
 #define CUDA_BLOCKSIZE 256
 #endif
 
