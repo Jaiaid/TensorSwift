@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.15)
-project(tensorswift VERSION 0.1 LANGUAGES CXX CUDA)
+project(tensorswift VERSION 0.1 LANGUAGES CUDA CXX)
 
 include(CTest)
 
@@ -48,6 +48,32 @@ else()
 endif()
 
 
+# set source files, add new file path if new source files added
+set(CORE_SOURCES
+	src/core/ts.cpp
+	src/core/storage.cpp)
+
+set(DEVICESPECIFIC_SOURCES
+	src/device/device_builder.cpp
+	src/device/cpu/cpu_device.cpp)
+
+set(CGRAPH_SOURCES 
+	src/cgraph/cgraph.cpp
+	src/cgraph/cg_op.cpp
+	src/cgraph/cg_node.cpp
+	src/cgraph/linear.cpp)
+
+set(PYINTERFACE_SOURCES 
+	src/python/pymodule_interface.cpp
+	src/core/python/core_interface.cpp
+	src/cgraph/python/cgraph_interface.cpp)
+
+# compile the source files
+target_sources(${CMAKE_PROJECT_NAME} PRIVATE ${CORE_SOURCES})
+target_sources(${CMAKE_PROJECT_NAME} PRIVATE ${DEVICESPECIFIC_SOURCES})
+target_sources(${CMAKE_PROJECT_NAME} PRIVATE ${CGRAPH_SOURCES})
+target_sources(${CMAKE_PROJECT_NAME} PRIVATE ${PYINTERFACE_SOURCES})
+
 # find CUDA for GPU accleration code compilation
 find_package(CUDA)
 if (CUDA_FOUND)
@@ -64,39 +90,14 @@ if (CUDA_FOUND)
 
 	set(CUDA_SOURCES
 		src/device/cuda/cuda_device.cu
-		src/device/cuda/ops.cu)
+		src/device/cuda/ops.cu
+		src/device/cuda/matmul.cu)
 
 	# compile the cuda files
 	target_sources(${CMAKE_PROJECT_NAME} PRIVATE ${CUDA_SOURCES})
 else()
 	message(WARNING "module CUDA not found, GPU acceleration will be unavailable.")
 endif()
-
-# set source files, add new file path if new source files added
-set(CORE_SOURCES
-	src/core/ts.cpp
-	src/core/storage.cpp)
-
-set(DEVICESPECIFIC_SOURCES
-	src/device/device_builder.cpp
-	src/device/cpu/cpu_device.cpp)
-
-set(CGRAPH_SOURCES 
-	src/cgraph/cgraph.cpp
-	src/cgraph/cg_op.cpp
-	src/cgraph/cg_node.cpp)
-
-set(PYINTERFACE_SOURCES 
-	src/python/pymodule_interface.cpp
-	src/core/python/core_interface.cpp
-	src/cgraph/python/cgraph_interface.cpp)
-
-
-# compile the source files
-target_sources(${CMAKE_PROJECT_NAME} PRIVATE ${CORE_SOURCES})
-target_sources(${CMAKE_PROJECT_NAME} PRIVATE ${DEVICESPECIFIC_SOURCES})
-target_sources(${CMAKE_PROJECT_NAME} PRIVATE ${CGRAPH_SOURCES})
-target_sources(${CMAKE_PROJECT_NAME} PRIVATE ${PYINTERFACE_SOURCES})
 
 
 # test if the build is done
