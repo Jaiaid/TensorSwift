@@ -2,45 +2,70 @@
 #define _STORAGE_H
 
 #include <iostream>
+#include <string>
+#include <memory>
 
-enum STORAGE_DEVICE{
-    CPU,
-    GPU
-};
+#include <device/device.h>
+#include <device/device_builder.h>
 
 class Storage
 {
-public:
-    float* buffer;
-    uint64_t size;
-    STORAGE_DEVICE devtype;
+    // data maybe brought to host or maybe send to GPU
+    // it is guaranteed that a tensor will have the cpu buffer always
+    // device is special case
+    float* hostbuffer_ptr;
+    // to indicate if latest data in device currently
+    bool indev;
+    // size needed for transfer api call
+    size_t sizebytes;
+    // for functionality if the storage also has backing from device
+    std::unique_ptr<device::Device> device_ptr;
+    // external to host memory backup storage device name
+    std::string external_device_name;
 
+public:
     Storage()
     {
-        buffer = nullptr;
-        size = 0;
-        devtype = STORAGE_DEVICE::CPU;
+        this->sizebytes = 0;
+        this->device_ptr = nullptr;
     }
 
-    Storage(uint64_t size, STORAGE_DEVICE devtype=STORAGE_DEVICE::CPU)
+    Storage(size_t size, std::string device_name="cpu")
     {
-        if (devtype != STORAGE_DEVICE::GPU) {
-            buffer = new float[size]();
+        this->sizebytes = sizeof(float) * size;
+        this->hostbuffer_ptr = new float[size];
+        this->indev = false;
+        this->device_ptr = nullptr;
+        if (device_name != "cpu") {
+            this->device_ptr = device::DeviceBuilder::build_device(device_name, this->sizebytes);
+            this->external_device_name = device_name;
         }
-        else {
+    }
+
+    void to(std::string dest_device_name);
+
+    std::string get_name();
+
+    float* get_bufferptr()
+    {
+        if (this->indev) {
+            return this->device_ptr->get_buffer();
         }
-        this->size = size;
+        return this->hostbuffer_ptr;
+    }
+
+    size_t get_size() 
+    {
+        return this->sizebytes / sizeof(float);
     }
 
     ~Storage()
     {
-        if (this->size > 0) {
-            if (devtype != STORAGE_DEVICE::GPU) {
-                delete[] buffer;
-            }
-            else {
-                
-            }
+        if (this->sizebytes > 0) {
+            delete[] this->hostbuffer_ptr;
+        }
+        if (this->device_ptr != nullptr) {
+            this->device_ptr->dealloc();
         }
     }
 };

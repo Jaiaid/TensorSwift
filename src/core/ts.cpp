@@ -36,7 +36,6 @@ ts::SwiftTensor::SwiftTensor(const std::vector<int>& shape)
     {
         intended_size*=shape[i];
     }
-    
     // create storage
     this->storage_ptr = std::make_shared<Storage>(intended_size);
     this->shape = shape;
@@ -61,11 +60,12 @@ ts::SwiftTensor::SwiftTensor(const std::vector<float>& data, const std::vector<i
     // create storage
 
     this->storage_ptr = std::make_shared<Storage>(intended_size);
+    
     this->shape = shape;
     this->recalc_dim();
 
     // copy data to created storage
-    float* buffer = this->storage_ptr->buffer;
+    float* buffer = this->storage_ptr->get_bufferptr();
     for (int i=0;i<this->size();i++) 
     {
         buffer[i] = data[i];
@@ -83,7 +83,7 @@ ts::SwiftTensor::SwiftTensor(std::shared_ptr<Storage> storage_ptr, const std::ve
     }
 
     // if size donot match just return an empty tensor with empty storage
-    if (intended_size != storage_ptr->size) {
+    if (intended_size != storage_ptr->get_size()) {
         this->storage_ptr = std::make_shared<Storage>();
         this->shape = std::vector<int>();
     }
@@ -105,17 +105,18 @@ ts::SwiftTensor ts::SwiftTensor::view(const std::vector<int>& shape)
 
 
 // return total number of element
-int ts::SwiftTensor::size()const
+size_t ts::SwiftTensor::size()const
 {
-    return this->storage_ptr->size;
+    return this->storage_ptr->get_size();
 }
 
 
 // get the storage buffer to read
-const Storage& ts::SwiftTensor::get_storage()const
+Storage& ts::SwiftTensor::get_storage()const
 {
     return *(this->storage_ptr);
 }
+
 
 // get stride at different dimension
 const std::vector<int>& ts::SwiftTensor::get_stride_list()const
@@ -124,13 +125,10 @@ const std::vector<int>& ts::SwiftTensor::get_stride_list()const
 }
 
 
-// to get device
-// currently there is no way to provide device type when constructing tensor
-// TODO
-// create constructor to provide device type at instantiation
-STORAGE_DEVICE ts::SwiftTensor::get_device()
+// to get device name
+std::string ts::SwiftTensor::get_device()
 {
-    return this->storage_ptr->devtype;
+    return this->storage_ptr->get_name();
 }
 
 
@@ -138,9 +136,9 @@ STORAGE_DEVICE ts::SwiftTensor::get_device()
 float ts::SwiftTensor::operator[](int idx)const
 {
     if (idx >= this->size()) {
-        return this->storage_ptr->buffer[0];
+        return this->storage_ptr->get_bufferptr()[0];
     }
-    return this->storage_ptr->buffer[idx];
+    return this->storage_ptr->get_bufferptr()[idx];
 }
 
 
@@ -151,7 +149,7 @@ float ts::SwiftTensor::operator[](const std::vector<int>& idx_list)const
     // TODO?
     // throw error?
     if (idx_list.size() > this->dim_offset.size()) {
-        return this->storage_ptr->buffer[0];
+        return this->storage_ptr->get_bufferptr()[0];
     }
 
     for(uint64_t i=0;i<this->dim_offset.size();i++)
@@ -162,10 +160,10 @@ float ts::SwiftTensor::operator[](const std::vector<int>& idx_list)const
     // TODO?
     // throw error?
     if (offset >= this->size()) {
-        return this->storage_ptr->buffer[0];
+        return this->storage_ptr->get_bufferptr()[0];
     }
 
-    return this->storage_ptr->buffer[offset];
+    return this->storage_ptr->get_bufferptr()[offset];
 }
 
 
@@ -182,8 +180,8 @@ ts::SwiftTensor ts::SwiftTensor::operator+(const SwiftTensor& t)const
     SwiftTensor result = SwiftTensor(this->shape);
 
     // addition loop
-    float* buffer1 = this->storage_ptr->buffer;
-    float* buffer2 = t.get_storage().buffer;
+    float* buffer1 = this->storage_ptr->get_bufferptr();
+    float* buffer2 = t.get_storage().get_bufferptr();
 
     #ifdef BUILD_OPENMP
     omp_set_num_threads(SYS_PARAM_CPUCOUNT);
@@ -191,7 +189,7 @@ ts::SwiftTensor ts::SwiftTensor::operator+(const SwiftTensor& t)const
     #endif
     for (int i=0;i<this->size();i++) 
     {
-        result.get_storage().buffer[i] = buffer1[i] + buffer2[i];
+        result.get_storage().get_bufferptr()[i] = buffer1[i] + buffer2[i];
     }
 
     return result;
@@ -206,15 +204,15 @@ ts::SwiftTensor ts::SwiftTensor::operator-(const SwiftTensor& t)const
     SwiftTensor result = SwiftTensor(this->shape);
 
     // subtraction loop
-    float* buffer1 = this->storage_ptr->buffer;
-    float* buffer2 = t.get_storage().buffer;
+    float* buffer1 = this->storage_ptr->get_bufferptr();
+    float* buffer2 = t.get_storage().get_bufferptr();
     #ifdef BUILD_OPENMP
     omp_set_num_threads(SYS_PARAM_CPUCOUNT);
     #pragma omp parallel for
     #endif
     for (int i=0;i<this->size();i++) 
     {
-        result.get_storage().buffer[i] = buffer1[i] - buffer2[i];
+        result.get_storage().get_bufferptr()[i] = buffer1[i] - buffer2[i];
     }
 
     return result;
@@ -233,7 +231,6 @@ ts::SwiftTensor ts::SwiftTensor::operator*(const SwiftTensor& t)const
     // To align with the default behavior in numpy, the * operator performs
     // an element-wise multiplication
     return this->multiply(t);
-
 }
 
 
@@ -242,21 +239,21 @@ ts::SwiftTensor ts::SwiftTensor::multiply(const SwiftTensor& t)const
     // This function only executes when both tensors have the same size
     if((this->shape[0] != t.shape[0]) || (this->shape[1] != t.shape[1])) 
     {
-        throw std::invalid_argument("Imcompatible tensor dimensions.");
+        throw std::invalid_argument("Incompatible tensor dimensions.");
     }
     else {
         SwiftTensor result = SwiftTensor(this->shape);
 
         // multiplication loop
-        float* buffer1 = this->storage_ptr->buffer;
-        float* buffer2 = t.get_storage().buffer;
+        const float* buffer1 = this->storage_ptr->get_bufferptr();
+        const float* buffer2 = t.get_storage().get_bufferptr();
         #ifdef BUILD_OPENMP
         omp_set_num_threads(SYS_PARAM_CPUCOUNT);
         #pragma omp parallel for
         #endif
         for (int i=0;i<this->size();i++) 
         {
-            result.get_storage().buffer[i] = buffer1[i] * buffer2[i];
+            result.get_storage().get_bufferptr()[i] = buffer1[i] * buffer2[i];
         }
 
         return result;
@@ -291,22 +288,22 @@ ts::SwiftTensor ts::SwiftTensor::dot(const SwiftTensor& t)const
     std::vector<int> t2s = t.shape; // second tensor's shape
 
     if(is_1d(t1s) && is_1d(t2s) && t1s[0] != t2s[0]) 
-        throw std::invalid_argument("Imcompatible tensor dimensions.");
+        throw std::invalid_argument("Incompatible tensor dimensions.");
 
     SwiftTensor result;
     if (is_1d(t1s) && is_1d(t2s)) {
         result = SwiftTensor(std::vector<int>(1, 1));
-        result.get_storage().buffer[0] = vecprod(this->get_storage().buffer, t.get_storage().buffer, this->shape[0]);
+        result.get_storage().get_bufferptr()[0] = vecprod(this->get_storage().get_bufferptr(), t.get_storage().get_bufferptr(), this->shape[0]);
     }
     else {
         if((is_2d(t1s) || is_2d(t2s)) && (t1s[1] != t2s[0]))
-            throw std::invalid_argument("Imcompatible tensor dimensions.");
+            throw std::invalid_argument("Incompatible tensor dimensions.");
 
         std::vector<int> newshape = {t1s[0], t2s[1]};
         result = SwiftTensor(newshape);
 
-        float* buffer1 = this->storage_ptr->buffer;
-        float* buffer2 = t.get_storage().buffer;
+        float* buffer1 = this->storage_ptr->get_bufferptr();
+        float* buffer2 = t.get_storage().get_bufferptr();
 
         #ifdef BUILD_OPENMP
         omp_set_num_threads(SYS_PARAM_CPUCOUNT);
@@ -326,7 +323,7 @@ ts::SwiftTensor ts::SwiftTensor::dot(const SwiftTensor& t)const
             }
 
             // Multipy the row from the first tensor with the second tensor
-            result.get_storage().buffer[i] = vecprod(buffer1_slice, buffer2_slice, t1s[1]);
+            result.get_storage().get_bufferptr()[i] = vecprod(buffer1_slice, buffer2_slice, t1s[1]);
         }
     }
 
@@ -358,7 +355,7 @@ ts::SwiftTensor ts::SwiftTensor::sum()const
     float sum = 0;
     std::vector<int> newshape = {1,};
     SwiftTensor result = SwiftTensor(newshape);
-    float* buffer = this->storage_ptr->buffer;
+    float* buffer = this->storage_ptr->get_bufferptr();
     #ifdef BUILD_OPENMP
     omp_set_num_threads(SYS_PARAM_CPUCOUNT);
     #pragma omp parallel for reduction (+:sum)
@@ -367,7 +364,7 @@ ts::SwiftTensor ts::SwiftTensor::sum()const
     {
         sum = sum + buffer[i];
     }
-    result.get_storage().buffer[0] = sum;
+    result.get_storage().get_bufferptr()[0] = sum;
     return result;
 }
 
@@ -383,15 +380,15 @@ ts::SwiftTensor ts::SwiftTensor::operator/(const SwiftTensor& t)const
         SwiftTensor result = SwiftTensor(this->shape);
 
         // subtraction loop
-        float* buffer1 = this->storage_ptr->buffer;
-        float* buffer2 = t.get_storage().buffer;
+        float* buffer1 = this->storage_ptr->get_bufferptr();
+        float* buffer2 = t.get_storage().get_bufferptr();
         #ifdef BUILD_OPENMP
         omp_set_num_threads(SYS_PARAM_CPUCOUNT);
         #pragma omp parallel for
         #endif
         for (int i=0;i<this->size();i++) 
         {
-            result.get_storage().buffer[i] = buffer1[i] / buffer2[i];
+            result.get_storage().get_bufferptr()[i] = buffer1[i] / buffer2[i];
         }
 
         return result;
@@ -416,7 +413,7 @@ ts::SwiftTensor ts::SwiftTensor::get_T()const
     
 
     SwiftTensor result = SwiftTensor(newshape);
-    float* buffer1 = this->storage_ptr->buffer;
+    float* buffer1 = this->storage_ptr->get_bufferptr();
     #ifdef BUILD_OPENMP
     omp_set_num_threads(SYS_PARAM_CPUCOUNT);
     #pragma omp parallel for
@@ -428,7 +425,7 @@ ts::SwiftTensor ts::SwiftTensor::get_T()const
             int k = floor(i/newshape[1]);
             int idx = (i%newshape[1])*newshape[0]+ k + stride;
         }
-        result.get_storage().buffer[i] = buffer1[idx];
+        result.get_storage().get_bufferptr()[i] = buffer1[idx];
     }
 
     return result;
@@ -441,14 +438,14 @@ ts::SwiftTensor ts::SwiftTensor::operator+(const float num)const
     SwiftTensor result = SwiftTensor(this->shape);
 
     // addition loop
-    float* buffer1 = this->storage_ptr->buffer;
+    float* buffer1 = this->storage_ptr->get_bufferptr();
     #ifdef BUILD_OPENMP
     omp_set_num_threads(SYS_PARAM_CPUCOUNT);
     #pragma omp parallel for
     #endif
     for (int i=0;i<this->size();i++) 
     {
-        result.get_storage().buffer[i] = buffer1[i] + num;
+        result.get_storage().get_bufferptr()[i] = buffer1[i] + num;
     }
 
     return result;
@@ -460,14 +457,14 @@ ts::SwiftTensor ts::SwiftTensor::operator-(const float num)const
     SwiftTensor result = SwiftTensor(this->shape);
 
     // subtraction loop
-    float* buffer1 = this->storage_ptr->buffer;
+    float* buffer1 = this->storage_ptr->get_bufferptr();
     #ifdef BUILD_OPENMP
     omp_set_num_threads(SYS_PARAM_CPUCOUNT);
     #pragma omp parallel for
     #endif
     for (int i=0;i<this->size();i++) 
     {
-        result.get_storage().buffer[i] = buffer1[i] - num;
+        result.get_storage().get_bufferptr()[i] = buffer1[i] - num;
     }
 
     return result;
@@ -479,14 +476,14 @@ ts::SwiftTensor ts::SwiftTensor::operator*(const float num)const
     SwiftTensor result = SwiftTensor(this->shape);
 
     // multiplication loop
-    float* buffer1 = this->storage_ptr->buffer;
+    float* buffer1 = this->storage_ptr->get_bufferptr();
     #ifdef BUILD_OPENMP
     omp_set_num_threads(SYS_PARAM_CPUCOUNT);
     #pragma omp parallel for
     #endif
     for (int i=0;i<this->size();i++) 
     {
-        result.get_storage().buffer[i] = buffer1[i] * num;
+        result.get_storage().get_bufferptr()[i] = buffer1[i] * num;
     }
 
     return result;
@@ -498,14 +495,14 @@ ts::SwiftTensor ts::SwiftTensor::operator/(const float num)const
     SwiftTensor result = SwiftTensor(this->shape);
 
     // division loop
-    float* buffer1 = this->storage_ptr->buffer;
+    float* buffer1 = this->storage_ptr->get_bufferptr();
     #ifdef BUILD_OPENMP
     omp_set_num_threads(SYS_PARAM_CPUCOUNT);
     #pragma omp parallel for
     #endif
     for (int i=0;i<this->size();i++) 
     {
-        result.get_storage().buffer[i] = buffer1[i] / num;
+        result.get_storage().get_bufferptr()[i] = buffer1[i] / num;
     }
 
     return result;
@@ -518,14 +515,14 @@ ts::SwiftTensor ts::operator+(const float num, const SwiftTensor& t)
     SwiftTensor result = SwiftTensor(t.shape);
 
     // addition loop
-    float* buffer1 = t.storage_ptr->buffer;
+    float* buffer1 = t.storage_ptr->get_bufferptr();
     #ifdef BUILD_OPENMP
     omp_set_num_threads(SYS_PARAM_CPUCOUNT);
     #pragma omp parallel for
     #endif
     for (int i=0;i<t.size();i++) 
     {
-        result.get_storage().buffer[i] = num + buffer1[i];
+        result.get_storage().get_bufferptr()[i] = num + buffer1[i];
     }
 
     return result;
@@ -537,14 +534,14 @@ ts::SwiftTensor ts::operator-(const float num, const SwiftTensor& t)
     SwiftTensor result = SwiftTensor(t.shape);
 
     // subtraction loop
-    float* buffer1 = t.storage_ptr->buffer;
+    float* buffer1 = t.storage_ptr->get_bufferptr();
     #ifdef BUILD_OPENMP
     omp_set_num_threads(SYS_PARAM_CPUCOUNT);
     #pragma omp parallel for
     #endif
     for (int i=0;i<t.size();i++) 
     {
-        result.get_storage().buffer[i] = num - buffer1[i];
+        result.get_storage().get_bufferptr()[i] = num - buffer1[i];
     }
 
     return result;
@@ -556,14 +553,14 @@ ts::SwiftTensor ts::operator*(const float num, const SwiftTensor& t)
     SwiftTensor result = SwiftTensor(t.shape);
 
     // multiplication loop
-    float* buffer1 = t.storage_ptr->buffer;
+    float* buffer1 = t.storage_ptr->get_bufferptr();
     #ifdef BUILD_OPENMP
     omp_set_num_threads(SYS_PARAM_CPUCOUNT);
     #pragma omp parallel for
     #endif
     for (int i=0;i<t.size();i++) 
     {
-        result.get_storage().buffer[i] = num * buffer1[i];
+        result.get_storage().get_bufferptr()[i] = num * buffer1[i];
     }
 
     return result;
@@ -574,14 +571,14 @@ ts::SwiftTensor ts::operator/(const float num, const SwiftTensor& t)
     SwiftTensor result = SwiftTensor(t.shape);
 
     // multiplication loop
-    float* buffer1 = t.storage_ptr->buffer;
+    float* buffer1 = t.storage_ptr->get_bufferptr();
     #ifdef BUILD_OPENMP
     omp_set_num_threads(SYS_PARAM_CPUCOUNT);
     #pragma omp parallel for
     #endif
     for (int i=0;i<t.size();i++) 
     {
-        result.get_storage().buffer[i] = num / buffer1[i];
+        result.get_storage().get_bufferptr()[i] = num / buffer1[i];
     }
 
     return result;
@@ -592,7 +589,7 @@ ts::SwiftTensor ts::operator/(const float num, const SwiftTensor& t)
 void ts::SwiftTensor::set(int idx, float val)const
 {
     if (idx < this->size()) {
-        this->storage_ptr->buffer[idx] = val;
+        this->storage_ptr->get_bufferptr()[idx] = val;
     }
     
 }
@@ -613,7 +610,7 @@ void ts::SwiftTensor::set(const std::vector<int>& idx_list, float val)const
         // TODO?
         // throw error?
         if (offset < this->size()) {
-            this->storage_ptr->buffer[offset] = val;
+            this->storage_ptr->get_bufferptr()[offset] = val;
         }
     }   
 }
@@ -641,7 +638,7 @@ void recursive_tensor_str_format_generation(std::string& tensor_str, std::vector
 std::string ts::to_str(const SwiftTensor& d)
 {
     std::string str_format;
-    const float* buffer = d.get_storage().buffer;
+    const float* buffer = d.get_storage().get_bufferptr();
     std::vector<int> stride_list = d.get_stride_list();
     int idx_track = 0;
 

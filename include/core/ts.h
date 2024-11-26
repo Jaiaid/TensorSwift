@@ -2,6 +2,7 @@
 #define _TS_H
 
 #include <memory>
+#include <vector>
 
 #ifdef BUILD_OPENMP
 #define SYS_PARAM_CPUCOUNT 8
@@ -49,16 +50,13 @@ namespace ts
         void set(const std::vector<int>& idx_list, float val)const;
         
         // return total number of elements
-        int size()const;
+        size_t size()const;
         
         // get the storage buffer to read
-        const Storage& get_storage()const;
+        Storage& get_storage()const;
 
-        // to get device
-        // currently there is no way to provide device type when constructing tensor
-        // TODO
-        // create constructor to provide device type at instantiation
-        STORAGE_DEVICE get_device();
+        // to get device of tensor
+        std::string get_device();
 
         // return a new instance with changed view but with same storage
         SwiftTensor view(const std::vector<int>& shape);
