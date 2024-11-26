@@ -28,14 +28,22 @@ public:
     {
         this->sizebytes = 0;
         this->device_ptr = nullptr;
+        this->external_device_name = "";
+        this->indev = false;
     }
 
     Storage(size_t size, std::string device_name="cpu")
     {
         this->sizebytes = sizeof(float) * size;
-        this->hostbuffer_ptr = new float[size];
+        // extra space at beginning to store the size
+        // when returning the buffer pointer we will compensete for that
+        // this is done to transfer the size to device within one buffer
+        this->hostbuffer_ptr = new float[sizeof(size_t)/sizeof(float) + size];
+        *((size_t *)this->hostbuffer_ptr) = size;
+
         this->indev = false;
         this->device_ptr = nullptr;
+        this->external_device_name = "";
         if (device_name != "cpu") {
             this->device_ptr = device::DeviceBuilder::build_device(device_name, this->sizebytes);
             this->external_device_name = device_name;
@@ -49,9 +57,10 @@ public:
     float* get_bufferptr()
     {
         if (this->indev) {
+            // std::cout << "as data is in device, returning device ptr" << std::endl;
             return this->device_ptr->get_buffer();
         }
-        return this->hostbuffer_ptr;
+        return (float *)((char *)this->hostbuffer_ptr + sizeof(size_t));
     }
 
     size_t get_size() 

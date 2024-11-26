@@ -6,6 +6,12 @@
 #include <core/storage.h>
 #include <core/ts.h>
 
+// CUDA acceleration added according to build flag
+// Tensor operations by default will not use CUDA acceleration
+// If the tensor data is in CUDA then it will use CUDA operation
+#ifdef BUILD_CUDA
+#include <device/cuda/ops.h>
+#endif
 
 void ts::SwiftTensor::recalc_dim()
 {
@@ -126,9 +132,15 @@ const std::vector<int>& ts::SwiftTensor::get_stride_list()const
 
 
 // to get device name
-std::string ts::SwiftTensor::get_device()
+std::string ts::SwiftTensor::get_device()const
 {
     return this->storage_ptr->get_name();
+}
+
+// to copy/bring storage to another device
+void ts::SwiftTensor::to(std::string device_name)
+{
+    this->storage_ptr->to(device_name);
 }
 
 
@@ -183,13 +195,37 @@ ts::SwiftTensor ts::SwiftTensor::operator+(const SwiftTensor& t)const
     float* buffer1 = this->storage_ptr->get_bufferptr();
     float* buffer2 = t.get_storage().get_bufferptr();
 
-    #ifdef BUILD_OPENMP
-    omp_set_num_threads(SYS_PARAM_CPUCOUNT);
-    #pragma omp parallel for
+    // check where the buffers are
+    // if both are in cuda we will trigger cuda operation
+    // if both are in cpu we will trigger cpu operation
+    // if different, we will throw error
+    #ifdef BUILD_CUDA
+        // std::cout << "first condition" << std::endl;
+        if (this->get_device() != t.get_device()) {
+            // std::cout << "tensors are in different devices" << std::endl;
+        }
+        // means the device is a cuda device
+        else if (this->get_device().find("cuda") != std::string::npos) {
+            // std::cout << "moving result tensor to " << this->get_device() << std::endl;
+            // move result to device
+            result.to(this->get_device());
+            // std::cout << "calling op " << std::endl;
+            cuda_elementwise_ops_wrapper(
+                buffer1, buffer2, result.get_storage().get_bufferptr(),
+                this->get_storage().get_size(), CUDAELEMWISEOP_TYPE::ADD
+            );
+        }
+        else
     #endif
-    for (int i=0;i<this->size();i++) 
     {
-        result.get_storage().get_bufferptr()[i] = buffer1[i] + buffer2[i];
+        #ifdef BUILD_OPENMP
+        omp_set_num_threads(SYS_PARAM_CPUCOUNT);
+        #pragma omp parallel for
+        #endif
+        for (int i=0;i<this->size();i++) 
+        {
+            result.get_storage().get_bufferptr()[i] = buffer1[i] + buffer2[i];
+        }
     }
 
     return result;
@@ -206,13 +242,38 @@ ts::SwiftTensor ts::SwiftTensor::operator-(const SwiftTensor& t)const
     // subtraction loop
     float* buffer1 = this->storage_ptr->get_bufferptr();
     float* buffer2 = t.get_storage().get_bufferptr();
-    #ifdef BUILD_OPENMP
-    omp_set_num_threads(SYS_PARAM_CPUCOUNT);
-    #pragma omp parallel for
+
+    // check where the buffers are
+    // if both are in cuda we will trigger cuda operation
+    // if both are in cpu we will trigger cpu operation
+    // if different, we will throw error
+    #ifdef BUILD_CUDA
+        // std::cout << "first condition" << std::endl;
+        if (this->get_device() != t.get_device()) {
+            // std::cout << "tensors are in different devices" << std::endl;
+        }
+        // means the device is a cuda device
+        else if (this->get_device().find("cuda") != std::string::npos) {
+            // std::cout << "moving result tensor to " << this->get_device() << std::endl;
+            // move result to device
+            result.to(this->get_device());
+            // std::cout << "calling op " << std::endl;
+            cuda_elementwise_ops_wrapper(
+                buffer1, buffer2, result.get_storage().get_bufferptr(),
+                this->get_storage().get_size(), CUDAELEMWISEOP_TYPE::SUB
+            );
+        }
+        else
     #endif
-    for (int i=0;i<this->size();i++) 
     {
-        result.get_storage().get_bufferptr()[i] = buffer1[i] - buffer2[i];
+        #ifdef BUILD_OPENMP
+        omp_set_num_threads(SYS_PARAM_CPUCOUNT);
+        #pragma omp parallel for
+        #endif
+        for (int i=0;i<this->size();i++) 
+        {
+            result.get_storage().get_bufferptr()[i] = buffer1[i] - buffer2[i];
+        }
     }
 
     return result;
@@ -245,15 +306,40 @@ ts::SwiftTensor ts::SwiftTensor::multiply(const SwiftTensor& t)const
         SwiftTensor result = SwiftTensor(this->shape);
 
         // multiplication loop
-        const float* buffer1 = this->storage_ptr->get_bufferptr();
-        const float* buffer2 = t.get_storage().get_bufferptr();
-        #ifdef BUILD_OPENMP
-        omp_set_num_threads(SYS_PARAM_CPUCOUNT);
-        #pragma omp parallel for
+        float* buffer1 = this->storage_ptr->get_bufferptr();
+        float* buffer2 = t.get_storage().get_bufferptr();
+
+        // check where the buffers are
+        // if both are in cuda we will trigger cuda operation
+        // if both are in cpu we will trigger cpu operation
+        // if different, we will throw error
+        #ifdef BUILD_CUDA
+            // std::cout << "first condition" << std::endl;
+            if (this->get_device() != t.get_device()) {
+                // std::cout << "tensors are in different devices" << std::endl;
+            }
+            // means the device is a cuda device
+            else if (this->get_device().find("cuda") != std::string::npos) {
+                // std::cout << "moving result tensor to " << this->get_device() << std::endl;
+                // move result to device
+                result.to(this->get_device());
+                // std::cout << "calling op " << std::endl;
+                cuda_elementwise_ops_wrapper(
+                    buffer1, buffer2, result.get_storage().get_bufferptr(),
+                    this->get_storage().get_size(), CUDAELEMWISEOP_TYPE::MUL
+                );
+            }
+            else
         #endif
-        for (int i=0;i<this->size();i++) 
         {
-            result.get_storage().get_bufferptr()[i] = buffer1[i] * buffer2[i];
+            #ifdef BUILD_OPENMP
+            omp_set_num_threads(SYS_PARAM_CPUCOUNT);
+            #pragma omp parallel for
+            #endif
+            for (int i=0;i<this->size();i++) 
+            {
+                result.get_storage().get_bufferptr()[i] = buffer1[i] * buffer2[i];
+            }
         }
 
         return result;
@@ -382,13 +468,38 @@ ts::SwiftTensor ts::SwiftTensor::operator/(const SwiftTensor& t)const
         // subtraction loop
         float* buffer1 = this->storage_ptr->get_bufferptr();
         float* buffer2 = t.get_storage().get_bufferptr();
-        #ifdef BUILD_OPENMP
-        omp_set_num_threads(SYS_PARAM_CPUCOUNT);
-        #pragma omp parallel for
+
+        // check where the buffers are
+        // if both are in cuda we will trigger cuda operation
+        // if both are in cpu we will trigger cpu operation
+        // if different, we will throw error
+        #ifdef BUILD_CUDA
+            // std::cout << "first condition" << std::endl;
+            if (this->get_device() != t.get_device()) {
+                // std::cout << "tensors are in different devices" << std::endl;
+            }
+            // means the device is a cuda device
+            else if (this->get_device().find("cuda") != std::string::npos) {
+                // std::cout << "moving result tensor to " << this->get_device() << std::endl;
+                // move result to device
+                result.to(this->get_device());
+                // std::cout << "calling op " << std::endl;
+                cuda_elementwise_ops_wrapper(
+                    buffer1, buffer2, result.get_storage().get_bufferptr(),
+                    this->get_storage().get_size(), CUDAELEMWISEOP_TYPE::DIV
+                );
+            }
+            else
         #endif
-        for (int i=0;i<this->size();i++) 
         {
-            result.get_storage().get_bufferptr()[i] = buffer1[i] / buffer2[i];
+            #ifdef BUILD_OPENMP
+            omp_set_num_threads(SYS_PARAM_CPUCOUNT);
+            #pragma omp parallel for
+            #endif
+            for (int i=0;i<this->size();i++) 
+            {
+                result.get_storage().get_bufferptr()[i] = buffer1[i] / buffer2[i];
+            }
         }
 
         return result;

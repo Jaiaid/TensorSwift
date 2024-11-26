@@ -56,7 +56,14 @@ namespace ts
         Storage& get_storage()const;
 
         // to get device of tensor
-        std::string get_device();
+        std::string get_device()const;
+
+        // to create storage to another device
+        // or to move from another device to cpu/host
+        // if the latest data is there, this will be a no op
+        // by default tensorswift creates storage on hostmemory
+        // therefore, explicit calling must be done to move to device (e.g., GPU)
+        void to(std::string device_name);
 
         // return a new instance with changed view but with same storage
         SwiftTensor view(const std::vector<int>& shape);

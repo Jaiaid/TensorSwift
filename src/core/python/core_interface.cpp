@@ -37,8 +37,12 @@ void init_core_interface(pybind11::module &m)
         .def("__setitem__", static_cast<void (ts::SwiftTensor::*)(const::std::vector<int>&, float val)const>(&ts::SwiftTensor::set))
         .def_readonly("shape", &ts::SwiftTensor::shape, "get shape of SwiftTensor")
         .def("size", &ts::SwiftTensor::size, "get total number of element in SwiftTensor")
+        .def("devname", &ts::SwiftTensor::size, "get current storage device name of tensor data")
+        .def_property_readonly("T", &ts::SwiftTensor::get_T, "get transpose of the tensor")
+        .def(
+            "to", static_cast<void (ts::SwiftTensor::*)(std::string)>(&ts::SwiftTensor::to),
+            "to move the tensor data storage to another device, no op if already in device")
         .def("view", &ts::SwiftTensor::view, "get changed view of SwiftTensor with same storage")
-        .def_property_readonly("T", &ts::SwiftTensor::get_T)
         .def("sum", &ts::SwiftTensor::sum, "sum the data of a SwiftTensor")
         .def(pybind11::self + pybind11::self)
         .def(pybind11::self - pybind11::self)
