@@ -10,33 +10,45 @@ namespace cgraph
 {
     class CGraph
     {
-        std::vector<CGOp> opsequence;
+        std::vector<CGOp *> opsequence;
 
     public:
         std::vector<CGNode> parameterlist;
         
-        CGraph(){};
+        CGraph()
+        {
+            this->opsequence = std::vector<CGOp *>();
+        };
 
-        std::vector<CGOp>& sequence()
+        void add_op(cgraph::CGOp *op) {
+            this->opsequence.push_back(op);
+        }
+
+        const std::vector<CGOp *>& sequence()
         {
             return this->opsequence;
         }
 
         void compute(const ts::SwiftTensor& input)
         {
-            this->opsequence[0].forward(input);
-            CGNode& activation = this->opsequence[0].get_activation_ref();
+            this->opsequence[0]->forward(input);
+            CGNode& activation = this->opsequence[0]->get_activation_ref();
 
             for(int i = 1;i < opsequence.size();i++)
             {
-                this->opsequence[0].forward(activation);
-                CGNode& activation = this->opsequence[0].get_activation_ref();
+                this->opsequence[0]->forward(activation);
+                CGNode& activation = this->opsequence[0]->get_activation_ref();
             }
+        }
+
+        void optimize()
+        {
+            
         }
 
         const CGNode& output()
         {
-            return this->opsequence[opsequence.size() - 1].get_activation_ref();
+            return this->opsequence[opsequence.size() - 1]->get_activation_ref();
         }
     };
 }

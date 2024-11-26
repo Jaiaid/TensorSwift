@@ -1,4 +1,5 @@
 #include <cgraph/cg_node.h>
+#include <cgraph/cg_op.h>
 
 cgraph::CGOp::CGOp()
 {

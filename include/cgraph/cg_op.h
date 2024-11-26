@@ -11,6 +11,7 @@ namespace cgraph
 {
     class CGOp
     {
+    protected:
         std::string name;
         std::vector<CGNode> inputs;
         CGNode output;
@@ -18,7 +19,7 @@ namespace cgraph
     public:
         CGOp();
         CGNode& get_activation_ref();
-        virtual void forward(const CGNode& external_input);
+        void forward(const CGNode& external_input);
         virtual void forward(const ts::SwiftTensor& external_input);
         virtual void backward();
     };
