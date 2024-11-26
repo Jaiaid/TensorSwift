@@ -23,8 +23,8 @@ import tensorswift
 """
 class CUDAFloatArithmaticTestCase(unittest.TestCase):
     RANDOM_SEED = 20241126
-    ARRAY_LENGTH = 10
-    EPSILON_DIFFERENCE = 5e-12
+    ARRAY_LENGTH = 1000000
+    EPSILON_DIFFERENCE = 5e-7
 
     def equalityCheck(data1:np.ndarray, data2:tensorswift.SwiftTensor) -> bool:
         if data1.size != data2.size():

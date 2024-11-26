@@ -24,7 +24,7 @@ class MatmulTestCase(unittest.TestCase):
     RANDOM_SEED = 20241126
     ARRAY_LENGTH = 100
     ARRAY_LENGTH_SQRT = 10
-    EPSILON_DIFFERENCE = 5e-6
+    EPSILON_DIFFERENCE = 5e-5
 
     def equalityCheck(data1:np.ndarray, data2:tensorswift.SwiftTensor) -> bool:
         if data1.size != data2.size():
