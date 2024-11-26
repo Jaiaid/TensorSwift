@@ -1,23 +1,30 @@
 cmake_minimum_required(VERSION 3.15)
-project(tensorswift VERSION 0.1 LANGUAGES CXX)
+project(tensorswift VERSION 0.1 LANGUAGES CXX CUDA)
 
 include(CTest)
 
-
 # set CPP required and default standard
-set(CMAKE_CXX_STANDARD_REQUIRED 11)
-set(CMAKE_CXX_STANDARD 11)
-
+set(CMAKE_CXX_STANDARD_REQUIRED 14)
+set(CMAKE_CXX_STANDARD 14)
 
 # define the build target
 add_library(${CMAKE_PROJECT_NAME} SHARED)
 
+# set compilation flag
+target_compile_options(${CMAKE_PROJECT_NAME} PUBLIC -O3)
+
+# add source headers for compilation
+# PUBLIC inclusion
+target_include_directories(${CMAKE_PROJECT_NAME} PUBLIC include)
 
 # find available python3 version, shared library suffix will be done accordingly
 # this is required to progress with build
-find_package(Python3 COMPONENTS Interpreter Development REQUIRED)
+find_package(Python3 3.8 EXACT COMPONENTS Interpreter Development REQUIRED)
 set(CMAKE_SHARED_LIBRARY_PREFIX "")
 set(CMAKE_SHARED_LIBRARY_SUFFIX ".${Python3_SOABI}.so")
+message(STATUS "Python3_EXECUTABLE: ${Python3_EXECUTABLE}")
+message(STATUS "Python3_INCLUDE_DIRS: ${Python3_INCLUDE_DIRS}")
+message(STATUS "Python3_LIBRARIES: ${Python3_LIBRARIES}")
 # include Python3 associated headers for compilation and libraries to link 
 target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE ${PYTHON3_INCLUDE_DIRS})
 target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE Python3::Python)
@@ -45,23 +52,33 @@ endif()
 find_package(CUDA)
 if (CUDA_FOUND)
 	message(STATUS "module CUDA found, GPU acceleration will be built if available.")
+	# compilation flag to enable conditional compilation of cuda oprations
+	target_compile_definitions(${CMAKE_PROJECT_NAME} PRIVATE BUILD_CUDA)
+	# Set CUDA properties for the target 
+	set_target_properties(${CMAKE_PROJECT_NAME} PROPERTIES 
+		CUDA_SEPARABLE_COMPILATION ON 
+		# CUDA_ARCHITECTURES "80" # Specify target architectures
+	)
+
+	target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE ${CUDA_LIBRARIES})
+
+	set(CUDA_SOURCES
+		src/device/cuda/cuda_device.cu)
+
+	# compile the cuda files
+	target_sources(${CMAKE_PROJECT_NAME} PRIVATE ${CUDA_SOURCES})
 else()
 	message(WARNING "module CUDA not found, GPU acceleration will be unavailable.")
 endif()
 
-
-# set compilation flag
-target_compile_options(${CMAKE_PROJECT_NAME} PUBLIC -O3)
-
-
-# add source headers for compilation
-# PUBLIC inclusion
-target_include_directories(${CMAKE_PROJECT_NAME} PUBLIC include)
-
-
 # set source files, add new file path if new source files added
 set(CORE_SOURCES
-	src/core/ts.cpp)
+	src/core/ts.cpp
+	src/core/storage.cpp)
+
+set(DEVICESPECIFIC_SOURCES
+	src/device/device_builder.cpp
+	src/device/cpu/cpu_device.cpp)
 
 set(CGRAPH_SOURCES 
 	src/cgraph/cgraph.cpp
@@ -76,6 +93,8 @@ set(PYINTERFACE_SOURCES
 
 # compile the source files
 target_sources(${CMAKE_PROJECT_NAME} PRIVATE ${CORE_SOURCES})
+target_sources(${CMAKE_PROJECT_NAME} PRIVATE ${DEVICESPECIFIC_SOURCES})
+target_sources(${CMAKE_PROJECT_NAME} PRIVATE ${CGRAPH_SOURCES})
 target_sources(${CMAKE_PROJECT_NAME} PRIVATE ${PYINTERFACE_SOURCES})
 
 
